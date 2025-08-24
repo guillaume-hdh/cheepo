@@ -35,5 +35,5 @@ jobs:
           port: 21
           protocol: ftps            # si Hostinger refuse, remplace par: ftp
           local-dir: dist/
-          server-dir: /home/u940751058/domains/cheepo.fr/public_html/app/
+          server-dir: app/
           dangerous-clean-slate: true
