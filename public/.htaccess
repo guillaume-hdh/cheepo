@@ -1,0 +1,11 @@
+# React/Vite SPA : toutes les routes côté serveur -> index.html
+Options -MultiViews
+RewriteEngine On
+
+# Si la ressource demandée existe (fichier/dossier), on la sert telle quelle
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Sinon, on renvoie index.html pour que le router client prenne le relais
+RewriteRule ^ index.html [L]

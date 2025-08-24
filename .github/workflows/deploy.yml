@@ -1,0 +1,39 @@
+name: Build & Deploy to Hostinger
+
+on:
+  push:
+    branches: [ "main" ]   # Si ta branche par défaut a un autre nom, change-le
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build (Vite)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Deploy via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.SFTP_SERVER }}
+          username: ${{ secrets.SFTP_USER }}
+          password: ${{ secrets.SFTP_PASS }}
+          port: 21
+          protocol: ftps            # si Hostinger refuse, remplace par: ftp
+          local-dir: dist/
+          server-dir: /home/u940751058/domains/cheepo.fr/public_html/app/
+          dangerous-clean-slate: true

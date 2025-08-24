@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@source "../index.html";
+@source "./**/*.{ts,tsx}";
+
+/* Palette Cheepo – noms en kebab-case */
+@theme {
+  --color-cheepo-coral: #FF6B4A;
+  --color-cheepo-coral-hover: #FF7C5E;
+  --color-cheepo-tangerine: #FF8A3D;
+  --color-cheepo-sun: #FFC857;
+  --color-cheepo-teal: #2AA89B;
+  --color-cheepo-sage: #8EC7B7;
+  --color-cheepo-bg: #FFE8D6;
+  --color-cheepo-card: #F8F1E7;
+  --color-cheepo-text: #1F2937;
+  --color-cheepo-text2: #475569;
+  --color-cheepo-line: #E5E7EB;
+  --color-cheepo-success: #22C55E;
+  --color-cheepo-warn: #F59E0B;
+  --color-cheepo-error: #EF4444;
+  --color-cheepo-link: #0EA5E9;
+  --color-cheepo-disabled: #CBD5E1;
+}
+
+
+
+
+html, body, #root {
+  height: 100%;
+  background: #FFE8D6;
+  color: #1F2937;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.btn { @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium; }
+.btn-primary { @apply bg-cheepo-coral text-white hover:bg-cheepo-coral-hover; }
+.card { @apply bg-cheepo-card rounded-xl shadow-sm border border-cheepo-line; }
