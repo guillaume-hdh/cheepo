@@ -45,7 +45,6 @@ export default function Events() {
 
   async function refreshEvents(userId: string) {
     setLoadingList(true);
-    // 1) récupère les IDs via event_members
     const { data: mems, error: mErr } = await supabase
       .from("event_members")
       .select("event_id")
@@ -64,7 +63,6 @@ export default function Events() {
       return;
     }
 
-    // 2) charge les events
     const { data: evs, error: eErr } = await supabase
       .from("events")
       .select("id,title,share_code,event_date,location")
@@ -101,7 +99,6 @@ export default function Events() {
         location: location?.trim() || null,
       };
 
-      // 1) crée l’événement
       const { data: inserted, error: insErr } = await supabase
         .from("events")
         .insert(payload)
@@ -114,7 +111,6 @@ export default function Events() {
         return;
       }
 
-      // 2) inscrit l’hôte
       const { error: memErr } = await supabase.from("event_members").insert({
         event_id: inserted.id,
         user_id: auth.user.id,
@@ -123,8 +119,6 @@ export default function Events() {
       if (memErr) console.warn("member insert:", memErr);
 
       toast("Barbecue créé 🔥");
-
-      // reset + refresh
       setTitle("");
       setDate("");
       setLocation("");
@@ -164,7 +158,7 @@ export default function Events() {
       </header>
 
       {/* Créer un événement */}
-      <section className="card">
+      <section className="card bg-white">
         <h2 className="font-semibold mb-3">Créer un barbecue</h2>
         <div className="grid md:grid-cols-3 gap-3">
           <input
@@ -195,7 +189,7 @@ export default function Events() {
       </section>
 
       {/* Liste des événements */}
-      <section className="card">
+      <section className="card bg-white">
         <h2 className="font-semibold mb-3">Tes barbecues</h2>
 
         {loadingList ? (
@@ -240,7 +234,7 @@ export default function Events() {
       </section>
 
       {/* Rejoindre via code */}
-      <section className="card">
+      <section className="card bg-white">
         <h2 className="font-semibold mb-3">Rejoindre via code</h2>
         <p className="text-sm">
           Tu as reçu un code ? Va sur <Link to="/join/XXXXXX" className="underline">/join/TONCODE</Link> (remplace TONCODE).
