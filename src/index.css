@@ -1,54 +1,54 @@
-/* === Tailwind layers (OBLIGATOIRE) === */
+/* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+/* Tailwind directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* === Palette & tokens Cheepo === */
-:root {
+/* Design tokens (Cheepo palette) */
+:root{
   --color-cheepo-coral: #FF6B4A;
   --color-cheepo-coralHover: #FF7C5E;
   --color-cheepo-tangerine: #FF8A3D;
   --color-cheepo-sun: #FFC857;
   --color-cheepo-teal: #2AA89B;
   --color-cheepo-sage: #8EC7B7;
-
-  --color-cheepo-bg: #FFE8D6;      /* fond app */
-  --color-cheepo-card: #F8F1E7;    /* fond cartes soft */
-
-  --color-cheepo-charcoal: #1F2937;
-  --color-cheepo-text-2: #475569;
+  --color-cheepo-bg: #FFE8D6;
+  --color-cheepo-card: #F8F1E7;
+  --color-cheepo-text: #1F2937;
+  --color-cheepo-text2: #475569;
   --color-cheepo-line: #E5E7EB;
-
   --color-cheepo-success: #22C55E;
   --color-cheepo-warn: #F59E0B;
   --color-cheepo-error: #EF4444;
-
   --color-cheepo-link: #0EA5E9;
   --color-cheepo-disabled: #CBD5E1;
 }
 
-/* === Composants utilitaires réutilisables === */
+/* Reusable utility “components” via @apply */
 @layer components {
-  /* carte : fond blanc pour contraste fort */
+  /* Card container */
   .card {
-    @apply bg-white border border-cheepo-border/60 rounded-xl p-4 shadow-sm;
+    @apply bg-[var(--color-cheepo-card)] border border-[var(--color-cheepo-line)]/60 rounded-xl p-4 shadow-sm;
   }
 
-  /* champs de saisie uniformes */
+  /* Common input */
   .input {
-    @apply w-full rounded-lg border border-cheepo-border/60 bg-white px-3 py-2
-           text-cheepo-charcoal placeholder:text-cheepo-text-2
-           focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30
-           focus:border-cheepo-coral;
+    @apply w-full rounded-lg border border-[var(--color-cheepo-line)]/60 bg-white px-3 py-2
+           text-[var(--color-cheepo-text)] placeholder:text-[var(--color-cheepo-text2)]
+           focus:outline-none focus:ring-2 focus:ring-[var(--color-cheepo-coral)]/30 focus:border-[var(--color-cheepo-coral)];
   }
 }
 
-/* === Styles globaux === */
-html, body, #root { height: 100%; }
-
-html, body {
-  background: var(--color-cheepo-bg);        /* fond pêche */
-  color: var(--color-cheepo-charcoal);
+/* Global page background / typography */
+html, body, #root{
+  height:100%;
+}
+body{
+  background: var(--color-cheepo-bg);
+  color: var(--color-cheepo-text);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
