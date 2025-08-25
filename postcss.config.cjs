@@ -1,4 +1,4 @@
-// postcss.config.cjs  (format CommonJS pour compat maximum dans CI)
+// postcss.config.cjs
 module.exports = {
   plugins: {
     '@tailwindcss/postcss': {},
