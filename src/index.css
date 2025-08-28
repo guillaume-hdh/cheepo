@@ -1,40 +1,54 @@
 /* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
 
-/* 1) Active Tailwind v4 */
-@import "tailwindcss";
+/* Tailwind directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* 2) Couleurs Cheepo (variables CSS) */
-:root {
-  --cheepo-bg:    #FFE8D6;  /* fond global */
-  --cheepo-card:  #FFF2E7;  /* fond des cartes (un poil plus clair que le bg) */
-  --cheepo-border:#E6C9B5;  /* bordures douces */
-  --cheepo-text:  #1F2937;  /* texte principal */
+/* Design tokens (Cheepo palette) */
+:root{
+  --color-cheepo-coral: #FF6B4A;
+  --color-cheepo-coralHover: #FF7C5E;
+  --color-cheepo-tangerine: #FF8A3D;
+  --color-cheepo-sun: #FFC857;
+  --color-cheepo-teal: #2AA89B;
+  --color-cheepo-sage: #8EC7B7;
+  --color-cheepo-bg: #FFE8D6;
+  --color-cheepo-card: #F8F1E7;
+  --color-cheepo-text: #1F2937;
+  --color-cheepo-text2: #475569;
+  --color-cheepo-line: #E5E7EB;
+  --color-cheepo-success: #22C55E;
+  --color-cheepo-warn: #F59E0B;
+  --color-cheepo-error: #EF4444;
+  --color-cheepo-link: #0EA5E9;
+  --color-cheepo-disabled: #CBD5E1;
 }
 
-/* 3) Gabarit global */
-html, body, #root { height: 100%; }
-body {
-  background: var(--cheepo-bg);
-  color: var(--cheepo-text);
+/* Reusable utility “components” via @apply */
+@layer components {
+  /* Card container */
+  .card {
+    @apply bg-[var(--color-cheepo-card)] border border-[var(--color-cheepo-line)]/60 rounded-xl p-4 shadow-sm;
+  }
+
+  /* Common input */
+  .input {
+    @apply w-full rounded-lg border border-[var(--color-cheepo-line)]/60 bg-white px-3 py-2
+           text-[var(--color-cheepo-text)] placeholder:text-[var(--color-cheepo-text2)]
+           focus:outline-none focus:ring-2 focus:ring-[var(--color-cheepo-coral)]/30 focus:border-[var(--color-cheepo-coral)];
+  }
+}
+
+/* Global page background / typography */
+html, body, #root{
+  height:100%;
+}
+body{
+  background: var(--color-cheepo-bg);
+  color: var(--color-cheepo-text);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* 4) Utilitaires réutilisables */
-@layer components {
-  /* Carte douce + arrondi + ombre */
-  .card {
-    /* Tailwind via @apply */
-    @apply rounded-xl shadow-sm p-4 border bg-white/80;
-    /* Ajustements Cheepo */
-    background-color: var(--cheepo-card);
-    border-color: var(--cheepo-border);
-  }
-
-  /* Inputs cohérents */
-  .input {
-    @apply w-full rounded-lg border bg-white px-3 py-2
-           focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30;
-    border-color: var(--cheepo-border);
-  }
 }
