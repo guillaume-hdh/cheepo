@@ -1,54 +1,51 @@
-/* === Tailwind layers (OBLIGATOIRE) === */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@source "../index.html";
+@source "./**/*.{ts,tsx}";
 
-/* === Palette & tokens Cheepo === */
-:root {
+/* Palette Cheepo – noms en kebab-case */
+@theme {
   --color-cheepo-coral: #FF6B4A;
-  --color-cheepo-coralHover: #FF7C5E;
+  --color-cheepo-coral-hover: #FF7C5E;
   --color-cheepo-tangerine: #FF8A3D;
   --color-cheepo-sun: #FFC857;
   --color-cheepo-teal: #2AA89B;
   --color-cheepo-sage: #8EC7B7;
-
-  --color-cheepo-bg: #FFE8D6;      /* fond app */
-  --color-cheepo-card: #F8F1E7;    /* fond cartes soft */
-
-  --color-cheepo-charcoal: #1F2937;
-  --color-cheepo-text-2: #475569;
+  --color-cheepo-bg: #FFE8D6;
+  --color-cheepo-card: #F8F1E7;
+  --color-cheepo-text: #1F2937;
+  --color-cheepo-text2: #475569;
   --color-cheepo-line: #E5E7EB;
-
   --color-cheepo-success: #22C55E;
   --color-cheepo-warn: #F59E0B;
   --color-cheepo-error: #EF4444;
-
   --color-cheepo-link: #0EA5E9;
   --color-cheepo-disabled: #CBD5E1;
 }
 
-/* === Composants utilitaires réutilisables === */
+/* Composants utilitaires réutilisables */
 @layer components {
-  /* carte : fond blanc pour contraste fort */
   .card {
-    @apply bg-white border border-cheepo-border/60 rounded-xl p-4 shadow-sm;
+    /* fond des cartes + bordure douce + arrondi + ombre */
+    @apply bg-cheepo-sand border border-cheepo-border/60 rounded-xl p-4 shadow-sm;
   }
 
-  /* champs de saisie uniformes */
   .input {
     @apply w-full rounded-lg border border-cheepo-border/60 bg-white px-3 py-2
            text-cheepo-charcoal placeholder:text-cheepo-text-2
-           focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30
-           focus:border-cheepo-coral;
+           focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30 focus:border-cheepo-coral;
   }
 }
 
-/* === Styles globaux === */
-html, body, #root { height: 100%; }
 
-html, body {
-  background: var(--color-cheepo-bg);        /* fond pêche */
-  color: var(--color-cheepo-charcoal);
+html, body, #root {
+  height: 100%;
+  background: #FFE8D6;
+  color: #1F2937;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.btn { @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium; }
+.btn-primary { @apply bg-cheepo-coral text-white hover:bg-cheepo-coral-hover; }
+.card { @apply bg-cheepo-card rounded-xl shadow-sm border border-cheepo-line; }
+
