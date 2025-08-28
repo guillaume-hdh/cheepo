@@ -22,19 +22,7 @@
   --color-cheepo-disabled: #CBD5E1;
 }
 
-/* Composants utilitaires réutilisables */
-@layer components {
-  .card {
-    /* fond des cartes + bordure douce + arrondi + ombre */
-    @apply bg-cheepo-sand border border-cheepo-border/60 rounded-xl p-4 shadow-sm;
-  }
 
-  .input {
-    @apply w-full rounded-lg border border-cheepo-border/60 bg-white px-3 py-2
-           text-cheepo-charcoal placeholder:text-cheepo-text-2
-           focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30 focus:border-cheepo-coral;
-  }
-}
 
 
 html, body, #root {
@@ -48,4 +36,3 @@ html, body, #root {
 .btn { @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium; }
 .btn-primary { @apply bg-cheepo-coral text-white hover:bg-cheepo-coral-hover; }
 .card { @apply bg-cheepo-card rounded-xl shadow-sm border border-cheepo-line; }
-

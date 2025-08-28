@@ -114,7 +114,7 @@ export default function Events() {
         return;
       }
 
-      // 2) inscrit l’hôte
+      // 2) inscrit l’hôte dans event_members
       const { error: memErr } = await supabase.from("event_members").insert({
         event_id: inserted.id,
         user_id: auth.user.id,
@@ -124,7 +124,7 @@ export default function Events() {
 
       toast("Barbecue créé 🔥");
 
-      // reset + refresh
+      // reset formulaire + refresh
       setTitle("");
       setDate("");
       setLocation("");
@@ -152,6 +152,7 @@ export default function Events() {
   }
 
   function locationOrigin() {
+    // compatibilite SSR/Vite dev
     if (typeof window !== "undefined" && window.location) return window.location.origin;
     return "https://app.cheepo.fr";
   }
@@ -164,7 +165,7 @@ export default function Events() {
       </header>
 
       {/* Créer un événement */}
-      <section className="card">
+      <section className="bg-cheepo-sand rounded-xl p-4 shadow-sm">
         <h2 className="font-semibold mb-3">Créer un barbecue</h2>
         <div className="grid md:grid-cols-3 gap-3">
           <input
@@ -195,7 +196,7 @@ export default function Events() {
       </section>
 
       {/* Liste des événements */}
-      <section className="card">
+      <section className="bg-cheepo-sand rounded-xl p-4 shadow-sm">
         <h2 className="font-semibold mb-3">Tes barbecues</h2>
 
         {loadingList ? (
@@ -203,7 +204,7 @@ export default function Events() {
         ) : items.length === 0 ? (
           <p className="text-sm text-cheepo-text-2">Aucun événement pour l’instant.</p>
         ) : (
-          <ul className="divide-y divide-cheepo-border/60">
+          <ul className="divide-y divide-gray-200">
             {items.map((ev) => (
               <li key={ev.id} className="py-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -240,7 +241,7 @@ export default function Events() {
       </section>
 
       {/* Rejoindre via code */}
-      <section className="card">
+      <section className="bg-cheepo-sand rounded-xl p-4 shadow-sm">
         <h2 className="font-semibold mb-3">Rejoindre via code</h2>
         <p className="text-sm">
           Tu as reçu un code ? Va sur <Link to="/join/XXXXXX" className="underline">/join/TONCODE</Link> (remplace TONCODE).
