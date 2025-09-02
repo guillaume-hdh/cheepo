@@ -33,6 +33,26 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.btn { @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium; }
-.btn-primary { @apply bg-cheepo-coral text-white hover:bg-cheepo-coral-hover; }
-.card { @apply bg-cheepo-card rounded-xl shadow-sm border border-cheepo-line; }
+/* Boutons */
+.btn {
+  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium
+         shadow-sm transition-colors
+         focus:outline-none focus:ring-2 focus:ring-offset-1;
+}
+
+/* Action principale : Corail */
+.btn-primary {
+  @apply bg-cheepo-coral text-white hover:bg-cheepo-coral-hover
+         focus:ring-cheepo-coral;
+}
+
+/* Secondaire doux : fond carte, bordure légère */
+.btn-soft {
+  @apply bg-cheepo-card text-cheepo-text border border-cheepo-line
+         hover:bg-cheepo-bg focus:ring-cheepo-coral;
+}
+
+/* Cartes (tu peux garder la tienne si elle est identique) */
+.card {
+  @apply bg-cheepo-card rounded-xl shadow-sm border border-cheepo-line;
+}

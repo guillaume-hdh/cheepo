@@ -222,18 +222,20 @@ export default function Events() {
                 <div className="shrink-0 flex gap-2">
                   <button
                     onClick={() => copyShare(ev)}
-                    className="px-3 py-1 rounded-full bg-cheepo-sun text-cheepo-charcoal text-sm"
+                    className="btn btn-soft"
                     title="Copier le lien d’invitation"
                   >
                     Copier le lien
                   </button>
+
                   <Link
                     to={eventLink(ev)}
-                    className="px-3 py-1 rounded-full bg-cheepo-teal text-white text-sm"
+                    className="btn btn-primary"
                   >
                     Ouvrir
                   </Link>
                 </div>
+
               </li>
             ))}
           </ul>
