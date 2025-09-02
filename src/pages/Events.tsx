@@ -196,7 +196,7 @@ export default function Events() {
       </section>
 
       {/* Liste des événements */}
-      <section className="bg-cheepo-sand rounded-xl p-4 shadow-sm">
+      <section className="bg-cheepo-sand rounded-xl border bg-white p-6 shadow-sm">
         <h2 className="font-semibold mb-3">Tes barbecues</h2>
 
         {loadingList ? (
