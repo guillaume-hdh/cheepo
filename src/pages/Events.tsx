@@ -232,7 +232,7 @@ export default function Events() {
                 <div className="shrink-0 flex gap-2">
                   <button
                     onClick={() => copyShare(ev)}
-                    className="btn btn-soft"
+                    className="btn card"
                     title="Copier le lien d’invitation"
                   >
                     Copier le lien
