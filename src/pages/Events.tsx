@@ -184,7 +184,7 @@ export default function Events() {
             onChange={(e) => setDate(e.target.value)}
             onFocus={onDateFocus}
             onBlur={onDateBlur}
-            placeholder="jj/mm/aaaa"
+            placeholder="Date"
             className="input"
             aria-label="Date de l’événement"
           />
