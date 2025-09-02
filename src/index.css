@@ -56,3 +56,18 @@ html, body, #root {
 .card {
   @apply bg-cheepo-card rounded-xl shadow-sm border border-cheepo-line;
 }
+/* Champs de formulaire — style global */
+@layer base {
+  /* Tous les champs sauf checkbox/radio */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    @apply bg-white border border-cheepo-line rounded-lg
+           px-3 py-2 shadow-sm
+           text-cheepo-text placeholder:text-cheepo-text2
+           focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30 focus:border-cheepo-coral;
+  }
+
+  /* Optionnel : un peu d'espace à droite pour le chevron des <select> */
+  select { @apply pr-8; }
+}
