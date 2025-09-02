@@ -165,7 +165,7 @@ export default function Events() {
       </header>
 
       {/* Créer un événement */}
-      <section className="bg-cheepo-sand rounded-xl p-4 shadow-sm">
+      <section className="bg-cheepo-sand card rounded-xl p-4 shadow-sm">
         <h2 className="font-semibold mb-3">Créer un barbecue</h2>
         <div className="grid md:grid-cols-3 gap-3">
           <input
@@ -196,7 +196,7 @@ export default function Events() {
       </section>
 
       {/* Liste des événements */}
-      <section className="bg-cheepo-sand rounded-xl border bg-white p-6 shadow-sm">
+      <section className="bg-cheepo-sand rounded-xl border card p-4 shadow-sm">
         <h2 className="font-semibold mb-3">Tes barbecues</h2>
 
         {loadingList ? (
@@ -241,7 +241,7 @@ export default function Events() {
       </section>
 
       {/* Rejoindre via code */}
-      <section className="bg-cheepo-sand rounded-xl p-4 shadow-sm">
+      <section className="bg-cheepo-sand card rounded-xl p-4 shadow-sm">
         <h2 className="font-semibold mb-3">Rejoindre via code</h2>
         <p className="text-sm">
           Tu as reçu un code ? Va sur <Link to="/join/XXXXXX" className="underline">/join/TONCODE</Link> (remplace TONCODE).
