@@ -2,7 +2,7 @@
 @source "../index.html";
 @source "./**/*.{ts,tsx}";
 
-/* Palette Cheepo – noms en kebab-case (Tailwind v4) */
+/* Palette Cheepo – noms en kebab-case */
 @theme {
   --color-cheepo-coral: #FF6B4A;
   --color-cheepo-coral-hover: #FF7C5E;
@@ -11,20 +11,22 @@
   --color-cheepo-teal: #2AA89B;
   --color-cheepo-sage: #8EC7B7;
 
-  --color-cheepo-bg: #FFE8D6;     /* fond page */
-  --color-cheepo-card: #F8F1E7;   /* fond cartes */
-  --color-cheepo-text: #1F2937;   /* texte principal */
-  --color-cheepo-text2: #475569;  /* texte secondaire / placeholder */
-  --color-cheepo-line: #E5E7EB;   /* bordures légères */
+  --color-cheepo-bg: #FFE8D6;
+  /* CHANGEMENT ICI */
+  --color-cheepo-card: #FBF7F1;
+
+  --color-cheepo-text: #1F2937;
+  --color-cheepo-text2: #475569;
+  --color-cheepo-line: #E5E7EB;
 
   --color-cheepo-success: #22C55E;
-  --color-cheepo-warn:    #F59E0B;
-  --color-cheepo-error:   #EF4444;
-  --color-cheepo-link:    #0EA5E9;
-  --color-cheepo-disabled:#CBD5E1;
+  --color-cheepo-warn: #F59E0B;
+  --color-cheepo-error: #EF4444;
+  --color-cheepo-link: #0EA5E9;
+  --color-cheepo-disabled: #CBD5E1;
 }
 
-/* Fond/texte global */
+/* Fond général */
 html, body, #root {
   height: 100%;
   background: var(--color-cheepo-bg);
@@ -33,50 +35,70 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ---------- Boutons ---------- */
-.btn {
-  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium
-         shadow-sm transition-colors
-         focus:outline-none focus:ring-2 focus:ring-offset-1;
+/* Utilitaires */
+.btn { @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium; }
+.btn-primary { @apply bg-cheepo-coral text-white hover:bg-cheepo-coral-hover; }
+.card { @apply bg-cheepo-card rounded-xl shadow-sm border border-cheepo-line; }
+
+/* Classe utilitaire explicite si besoin */
+.input {
+  @apply w-full rounded-lg border border-cheepo-line bg-white px-3 py-2 shadow-sm
+         text-cheepo-text placeholder:text-cheepo-text2/70
+         outline-none
+         hover:ring-1 hover:ring-cheepo-line/40
+         focus:border-cheepo-line focus:ring-2 focus:ring-cheepo-line/55;
 }
 
-/* Action principale : Corail */
-.btn-primary {
-  @apply bg-cheepo-coral text-white hover:bg-cheepo-coral-hover
-         focus:ring-cheepo-coral;
-}
-
-/* Secondaire doux : fond carte, bordure légère */
-.btn-soft {
-  @apply bg-cheepo-card text-cheepo-text border border-cheepo-line
-         hover:bg-cheepo-bg focus:ring-cheepo-coral;
-}
-
-/* ---------- Cartes ---------- */
-.card {
-  @apply bg-cheepo-card rounded-xl shadow-sm border border-cheepo-line;
-}
-
-/* ---------- Champs de formulaire (règles globales) ---------- */
+/* --------- Styles globaux pour TOUS les champs --------- */
 @layer base {
-  /* Tous les champs sauf checkbox/radio */
-  input:not([type="checkbox"]):not([type="radio"]),
+  /* Text-like inputs, select et textarea */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"],
   select,
   textarea {
-    @apply bg-white border border-cheepo-line rounded-lg
-           px-3 py-2 shadow-sm
-           text-cheepo-text placeholder:text-cheepo-text2
-           focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30 focus:border-cheepo-coral;
+    @apply bg-white text-cheepo-text
+           border border-cheepo-line rounded-lg px-3 py-2 shadow-sm
+           outline-none
+           /* CHANGEMENT ICI : gris léger en hover/focus */
+           hover:ring-1 hover:ring-cheepo-line/40
+           focus:border-cheepo-line focus:ring-2 focus:ring-cheepo-line/55;
   }
 
-  /* Un peu d’espace pour le chevron des <select> */
-  select { @apply pr-8; }
+  /* Placeholders gris doux */
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-cheepo-text2/70;
+  }
 
-  /* Déactive l’outline bleu par défaut sur les boutons pour garder le ring Tailwind */
-  button { @apply focus:outline-none; }
+  /* Cases à cocher / radios : bordure + accent neutre */
+  input[type="checkbox"],
+  input[type="radio"] {
+    @apply bg-white border-cheepo-line text-cheepo-text focus:ring-cheepo-line/50;
+  }
+
+  /* Désactivés */
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    @apply bg-cheepo-card text-cheepo-text2 cursor-not-allowed opacity-70;
+  }
 }
 
-/* (Optionnel) une util .input si tu veux cibler certains champs seulement
-.input { @apply bg-white border border-cheepo-line rounded-lg px-3 py-2 shadow-sm
-                  text-cheepo-text placeholder:text-cheepo-text2
-                  focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30 focus:border-cheepo-coral; } */
+/* Chrome autofill : rester blanc */
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px #fff inset;
+  -webkit-text-fill-color: var(--color-cheepo-text) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
