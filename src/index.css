@@ -2,7 +2,7 @@
 @source "../index.html";
 @source "./**/*.{ts,tsx}";
 
-/* Palette Cheepo – noms en kebab-case */
+/* Palette Cheepo – noms en kebab-case (Tailwind v4) */
 @theme {
   --color-cheepo-coral: #FF6B4A;
   --color-cheepo-coral-hover: #FF7C5E;
@@ -10,30 +10,30 @@
   --color-cheepo-sun: #FFC857;
   --color-cheepo-teal: #2AA89B;
   --color-cheepo-sage: #8EC7B7;
-  --color-cheepo-bg: #FFE8D6;
-  --color-cheepo-card: #F8F1E7;
-  --color-cheepo-text: #1F2937;
-  --color-cheepo-text2: #475569;
-  --color-cheepo-line: #E5E7EB;
+
+  --color-cheepo-bg: #FFE8D6;     /* fond page */
+  --color-cheepo-card: #F8F1E7;   /* fond cartes */
+  --color-cheepo-text: #1F2937;   /* texte principal */
+  --color-cheepo-text2: #475569;  /* texte secondaire / placeholder */
+  --color-cheepo-line: #E5E7EB;   /* bordures légères */
+
   --color-cheepo-success: #22C55E;
-  --color-cheepo-warn: #F59E0B;
-  --color-cheepo-error: #EF4444;
-  --color-cheepo-link: #0EA5E9;
-  --color-cheepo-disabled: #CBD5E1;
+  --color-cheepo-warn:    #F59E0B;
+  --color-cheepo-error:   #EF4444;
+  --color-cheepo-link:    #0EA5E9;
+  --color-cheepo-disabled:#CBD5E1;
 }
 
-
-
-
+/* Fond/texte global */
 html, body, #root {
   height: 100%;
-  background: #FFE8D6;
-  color: #1F2937;
+  background: var(--color-cheepo-bg);
+  color: var(--color-cheepo-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Boutons */
+/* ---------- Boutons ---------- */
 .btn {
   @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium
          shadow-sm transition-colors
@@ -52,11 +52,12 @@ html, body, #root {
          hover:bg-cheepo-bg focus:ring-cheepo-coral;
 }
 
-/* Cartes (tu peux garder la tienne si elle est identique) */
+/* ---------- Cartes ---------- */
 .card {
   @apply bg-cheepo-card rounded-xl shadow-sm border border-cheepo-line;
 }
-/* Champs de formulaire — style global */
+
+/* ---------- Champs de formulaire (règles globales) ---------- */
 @layer base {
   /* Tous les champs sauf checkbox/radio */
   input:not([type="checkbox"]):not([type="radio"]),
@@ -68,6 +69,14 @@ html, body, #root {
            focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30 focus:border-cheepo-coral;
   }
 
-  /* Optionnel : un peu d'espace à droite pour le chevron des <select> */
+  /* Un peu d’espace pour le chevron des <select> */
   select { @apply pr-8; }
+
+  /* Déactive l’outline bleu par défaut sur les boutons pour garder le ring Tailwind */
+  button { @apply focus:outline-none; }
 }
+
+/* (Optionnel) une util .input si tu veux cibler certains champs seulement
+.input { @apply bg-white border border-cheepo-line rounded-lg px-3 py-2 shadow-sm
+                  text-cheepo-text placeholder:text-cheepo-text2
+                  focus:outline-none focus:ring-2 focus:ring-cheepo-coral/30 focus:border-cheepo-coral; } */

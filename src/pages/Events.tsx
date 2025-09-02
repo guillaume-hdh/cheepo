@@ -23,6 +23,9 @@ export default function Events() {
   // form
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<string>("");
+  const [dateInputType, setDateInputType] = useState<"text" | "date">(
+    "" ? "date" : "text"
+  );
   const [location, setLocation] = useState("");
   const canCreate = useMemo(() => title.trim().length > 1 && !!date, [title, date]);
 
@@ -176,10 +179,16 @@ export default function Events() {
           />
           <input
             className="input"
-            type="date"
+            type={dateInputType}              // ← text or date
+            placeholder="jj/mm/aaaa"          // ← visible while type="text"
             value={date}
+            onFocus={() => setDateInputType("date")}
+            onBlur={(e) => {
+              if (!e.currentTarget.value) setDateInputType("text");
+            }}
             onChange={(e) => setDate(e.target.value)}
           />
+
           <input
             className="input"
             placeholder="Lieu (optionnel)"
