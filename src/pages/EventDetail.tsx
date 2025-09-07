@@ -68,6 +68,9 @@ function isGramUnit(u?: string | null) {
   return s === "g" || s === "gr" || s === "gramme" || s === "grammes";
 }
 
+// liste d’unités proposées pour l’ajout libre
+const UNIT_CHOICES = ["portion", "pièce", "bouteille", "g", "cl"];
+
 export default function EventDetail() {
   const { id } = useParams();
   const eventId = id as string;
@@ -82,21 +85,24 @@ export default function EventDetail() {
   const [remain, setRemain] = useState<RemainingRow[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // --- FORM STATES ---
+  // ---------- États "Qui mange quoi" ----------
+  // 1) ajout depuis catalogue
+  const [eatSel, setEatSel] = useState<string>(""); // id catalogue
+  const [eatCatQty, setEatCatQty] = useState<number>(1);
 
-  // Qui mange quoi
-  const [eatSel, setEatSel] = useState<string>("");     // id catalogue OU "" => libre
-  const [eatLabel, setEatLabel] = useState<string>(""); // libre
-  const [eatUnit, setEatUnit] = useState<string>("portion");
-  const [eatQty, setEatQty] = useState<number>(1);
+  // 2) ajout libre (révélé par un lien "Ajout libre")
+  const [eatFreeOpen, setEatFreeOpen] = useState<boolean>(false);
+  const [eatFreeLabel, setEatFreeLabel] = useState<string>("");
+  const [eatFreeUnit, setEatFreeUnit] = useState<string>("portion");
+  const [eatFreeQty, setEatFreeQty] = useState<number>(1);
 
-  // Je ramène
-  const [bringSel, setBringSel] = useState<string>(""); // id catalogue OU "" => libre
+  // ---------- États "Je ramène" (inchangé) ----------
+  const [bringSel, setBringSel] = useState<string>("");
   const [bringLabel, setBringLabel] = useState<string>("");
   const [bringUnit, setBringUnit] = useState<string>("pièce");
   const [bringQty, setBringQty] = useState<number>(1);
 
-  // Courses
+  // ---------- États "Courses" (inchangé) ----------
   const [shopLabel, setShopLabel] = useState<string>("");
   const [shopUnit, setShopUnit] = useState<string>("pièce");
   const [shopQty, setShopQty] = useState<number>(1);
@@ -146,56 +152,61 @@ export default function EventDetail() {
   const myBring = useMemo(() => bring.filter((b) => b.user_id === me), [bring, me]);
   const allBringTotals = useMemo(() => groupTotals(bring), [bring]);
 
-  // Pas dynamique (50g si grammes, sinon 1)
-  const eatStep = useMemo(() => {
-    const unit = eatSel ? catalog.find(c => c.id === eatSel)?.unit : eatUnit;
+  // Pas dynamiques
+  const eatCatStep = useMemo(() => {
+    const unit = eatSel ? catalog.find((c) => c.id === eatSel)?.unit : undefined;
     return isGramUnit(unit) ? 50 : 1;
-  }, [eatSel, eatUnit, catalog]);
+  }, [eatSel, catalog]);
+
+  const eatFreeStep = useMemo(() => (isGramUnit(eatFreeUnit) ? 50 : 1), [eatFreeUnit]);
 
   const bringStep = useMemo(() => {
     const unit = bringSel ? catalog.find(c => c.id === bringSel)?.unit : bringUnit;
     return isGramUnit(unit) ? 50 : 1;
   }, [bringSel, bringUnit, catalog]);
 
-  // --- ACTIONS ---
-
-  async function addEat(e: React.FormEvent) {
+  // ---------- ACTIONS : EAT ----------
+  async function addEatFromCatalog(e: React.FormEvent) {
     e.preventDefault();
-    if (!me || eatQty <= 0) return;
-
-    let label = eatLabel.trim();
-    let unit = eatUnit;
-    let category: string | null = null;
-    let catalogId: string | null = null;
-
-    if (eatSel) {
-      const item = catalog.find((c) => c.id === eatSel);
-      if (!item) return;
-      label = item.label;
-      unit = item.unit;
-      category = item.category;
-      catalogId = item.id;
-    } else {
-      if (!label) return; // en libre, le label est requis
-    }
+    if (!me || !eatSel || eatCatQty <= 0) return;
+    const item = catalog.find((c) => c.id === eatSel);
+    if (!item) return;
 
     const { error } = await supabase.from("eat_selections").insert({
       event_id: eventId,
       user_id: me,
-      label,
-      unit,
-      category,
-      quantity: eatQty,
-      catalog_item_id: catalogId,
+      label: item.label,
+      unit: item.unit,
+      category: item.category,
+      quantity: eatCatQty,
+      catalog_item_id: item.id,
     });
-
     if (error) setMsg("Erreur (eat): " + error.message);
     else {
-      setEatQty(1);
-      if (!eatSel) {
-        setEatLabel("");
-        setEatUnit("portion");
-      }
+      setEatCatQty(isGramUnit(item.unit) ? 50 : 1);
+      await reloadLists();
+    }
+  }
+
+  async function addEatFromFree(e: React.FormEvent) {
+    e.preventDefault();
+    if (!me || !eatFreeLabel.trim() || eatFreeQty <= 0) return;
+
+    const { error } = await supabase.from("eat_selections").insert({
+      event_id: eventId,
+      user_id: me,
+      label: eatFreeLabel.trim(),
+      unit: eatFreeUnit,
+      category: null,
+      quantity: eatFreeQty,
+      catalog_item_id: null,
+    });
+    if (error) setMsg("Erreur (eat libre): " + error.message);
+    else {
+      setEatFreeLabel("");
+      setEatFreeUnit("portion");
+      setEatFreeQty(1);
+      setEatFreeOpen(false);
       await reloadLists();
     }
   }
@@ -206,6 +217,7 @@ export default function EventDetail() {
     else await reloadLists();
   }
 
+  // ---------- ACTIONS : BRING ----------
   async function addBring(e: React.FormEvent) {
     e.preventDefault();
     if (!me || bringQty <= 0) return;
@@ -250,6 +262,7 @@ export default function EventDetail() {
     else await reloadLists();
   }
 
+  // ---------- ACTIONS : SHOP ----------
   async function addShopAddition(e: React.FormEvent) {
     e.preventDefault();
     if (!shopLabel.trim() || shopQty <= 0) return;
@@ -352,39 +365,73 @@ export default function EventDetail() {
       {/* --- TAB EAT --- */}
       {tab === "eat" && (
         <div className="space-y-6">
-          <div className="card p-6 space-y-3">
+          <div className="card p-6 space-y-4">
             <h3 className="font-semibold">Mes choix</h3>
-            <form className="flex flex-wrap gap-2 items-center" onSubmit={addEat}>
+
+            {/* Ligne 1 : depuis le catalogue */}
+            <form className="flex flex-wrap gap-2 items-center" onSubmit={addEatFromCatalog}>
               <CatalogSelect
                 value={eatSel}
-                onChange={(v) => { setEatSel(v); if (v) { setEatLabel(""); } }}
-                placeholder="Choisir (ou laisse vide pour libre)"
-              />
-              <span className="text-sm text-cheepo-text2">ou</span>
-              <input
-                className="card px-3 py-2"
-                placeholder="Ajout libre (ex: salade)"
-                value={eatLabel}
-                onChange={(e) => { setEatLabel(e.target.value); if (e.target.value) setEatSel(""); }}
-              />
-              <input
-                className="card px-3 py-2 w-28"
-                placeholder="unité"
-                value={eatUnit}
-                onChange={(e) => setEatUnit(e.target.value)}
-                disabled={!!eatSel}
+                onChange={setEatSel}
+                placeholder="Choisir dans la liste…"
               />
               <input
                 type="number"
-                min={eatStep}
-                step={eatStep}
+                min={eatCatStep}
+                step={eatCatStep}
                 className="card px-3 py-2 w-24"
-                value={eatQty}
-                onChange={(e) => setEatQty(Number(e.target.value))}
+                value={eatCatQty}
+                onChange={(e) => setEatCatQty(Number(e.target.value))}
+                placeholder="Qté"
               />
-              <button className="btn btn-primary" type="submit">Ajouter</button>
+              <button className="btn btn-primary" type="submit" disabled={!eatSel}>
+                Ajouter
+              </button>
             </form>
 
+            {/* Lien Ajout libre */}
+            <button
+              type="button"
+              onClick={() => setEatFreeOpen((v) => !v)}
+              className="text-sm underline text-cheepo-link self-start"
+            >
+              {eatFreeOpen ? "Masquer l’ajout libre" : "Ajout libre"}
+            </button>
+
+            {/* Ligne 2 : ajout libre (affiché au clic) */}
+            {eatFreeOpen && (
+              <form className="flex flex-wrap gap-2 items-center" onSubmit={addEatFromFree}>
+                <input
+                  className="card px-3 py-2"
+                  placeholder="Libellé (ex: salade)"
+                  value={eatFreeLabel}
+                  onChange={(e) => setEatFreeLabel(e.target.value)}
+                />
+                <select
+                  className="card px-3 py-2 w-40"
+                  value={eatFreeUnit}
+                  onChange={(e) => setEatFreeUnit(e.target.value)}
+                >
+                  {UNIT_CHOICES.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={eatFreeStep}
+                  step={eatFreeStep}
+                  className="card px-3 py-2 w-24"
+                  value={eatFreeQty}
+                  onChange={(e) => setEatFreeQty(Number(e.target.value))}
+                  placeholder="Qté"
+                />
+                <button className="btn btn-primary" type="submit">
+                  Ajouter
+                </button>
+              </form>
+            )}
+
+            {/* Mes ajouts */}
             <ul className="space-y-2">
               {myEat.length === 0 && <li className="text-cheepo-text2 text-sm">Aucun pour l’instant.</li>}
               {myEat.map((r) => (
