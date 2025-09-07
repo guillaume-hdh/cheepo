@@ -86,23 +86,27 @@ export default function EventDetail() {
   const [msg, setMsg] = useState<string | null>(null);
 
   // ---------- États "Qui mange quoi" ----------
-  // 1) ajout depuis catalogue
   const [eatSel, setEatSel] = useState<string>(""); // id catalogue
   const [eatCatQty, setEatCatQty] = useState<number>(1);
 
-  // 2) ajout libre (révélé par un lien "Ajout libre")
+  // Ajout libre (toggle)
   const [eatFreeOpen, setEatFreeOpen] = useState<boolean>(false);
   const [eatFreeLabel, setEatFreeLabel] = useState<string>("");
   const [eatFreeUnit, setEatFreeUnit] = useState<string>("portion");
   const [eatFreeQty, setEatFreeQty] = useState<number>(1);
 
-  // ---------- États "Je ramène" (inchangé) ----------
+  // ---------- États "Je ramène" (ONGLET BRING) ----------
+  // 1) depuis catalogue
   const [bringSel, setBringSel] = useState<string>("");
+  const [bringCatQty, setBringCatQty] = useState<number>(1);
+
+  // 2) ajout libre (toggle)
+  const [bringFreeOpen, setBringFreeOpen] = useState<boolean>(false);
   const [bringLabel, setBringLabel] = useState<string>("");
   const [bringUnit, setBringUnit] = useState<string>("pièce");
   const [bringQty, setBringQty] = useState<number>(1);
 
-  // ---------- États "Courses" (inchangé) ----------
+  // ---------- États "Courses" ----------
   const [shopLabel, setShopLabel] = useState<string>("");
   const [shopUnit, setShopUnit] = useState<string>("pièce");
   const [shopQty, setShopQty] = useState<number>(1);
@@ -160,10 +164,12 @@ export default function EventDetail() {
 
   const eatFreeStep = useMemo(() => (isGramUnit(eatFreeUnit) ? 50 : 1), [eatFreeUnit]);
 
-  const bringStep = useMemo(() => {
-    const unit = bringSel ? catalog.find(c => c.id === bringSel)?.unit : bringUnit;
+  const bringCatStep = useMemo(() => {
+    const unit = bringSel ? catalog.find(c => c.id === bringSel)?.unit : undefined;
     return isGramUnit(unit) ? 50 : 1;
-  }, [bringSel, bringUnit, catalog]);
+  }, [bringSel, catalog]);
+
+  const bringFreeStep = useMemo(() => (isGramUnit(bringUnit) ? 50 : 1), [bringUnit]);
 
   // ---------- ACTIONS : EAT ----------
   async function addEatFromCatalog(e: React.FormEvent) {
@@ -249,9 +255,16 @@ export default function EventDetail() {
     });
     if (error) setMsg("Erreur (bring): " + error.message);
     else {
+      // reset
+      if (catalogId) {
+        setBringCatQty(1);
+      } else {
+        setBringUnit("pièce");
+      }
       setBringQty(1);
       setBringSel("");
       setBringLabel("");
+      setBringFreeOpen(false);
       await reloadLists();
     }
   }
@@ -287,6 +300,7 @@ export default function EventDetail() {
     setBringLabel(r.label);
     setBringUnit(r.unit);
     setBringQty(r.remaining);
+    setBringFreeOpen(true);
   }
 
   // ----- UI -----
@@ -458,38 +472,71 @@ export default function EventDetail() {
       {/* --- TAB BRING --- */}
       {tab === "bring" && (
         <div className="space-y-6">
-          <div className="card p-6 space-y-3">
+          <div className="card p-6 space-y-4">
             <h3 className="font-semibold">Je ramène</h3>
+
+            {/* Ligne 1 : depuis le catalogue */}
             <form className="flex flex-wrap gap-2 items-center" onSubmit={addBring}>
               <CatalogSelect
                 value={bringSel}
-                onChange={(v) => { setBringSel(v); if (v) { setBringLabel(""); } }}
-                placeholder="Choisir (ou laisse vide pour libre)"
-              />
-              <span className="text-sm text-cheepo-text2">ou</span>
-              <input
-                className="card px-3 py-2"
-                placeholder="Ajout libre (ex: chips)"
-                value={bringLabel}
-                onChange={(e) => { setBringLabel(e.target.value); if (e.target.value) setBringSel(""); }}
-              />
-              <input
-                className="card px-3 py-2 w-28"
-                placeholder="unité"
-                value={bringUnit}
-                onChange={(e) => setBringUnit(e.target.value)}
-                disabled={!!bringSel}
+                onChange={(v) => { setBringSel(v); if (v) { setBringLabel(""); setBringFreeOpen(false); } }}
+                placeholder="Choisir dans la liste…"
               />
               <input
                 type="number"
-                min={bringStep}
-                step={bringStep}
+                min={bringCatStep}
+                step={bringCatStep}
                 className="card px-3 py-2 w-24"
-                value={bringQty}
-                onChange={(e) => setBringQty(Number(e.target.value))}
+                value={bringCatQty}
+                onChange={(e) => setBringCatQty(Number(e.target.value))}
+                placeholder="Qté"
               />
-              <button className="btn btn-primary" type="submit">Ajouter</button>
+              <button className="btn btn-primary" type="submit" disabled={!bringSel}>
+                Ajouter
+              </button>
             </form>
+
+            {/* Lien Ajout libre */}
+            <button
+              type="button"
+              onClick={() => { setBringFreeOpen(v => !v); if (!bringFreeOpen) setBringSel(""); }}
+              className="text-sm underline text-cheepo-link self-start"
+            >
+              {bringFreeOpen ? "Masquer l’ajout libre" : "Ajout libre"}
+            </button>
+
+            {/* Ligne 2 : ajout libre (affiché au clic) */}
+            {bringFreeOpen && (
+              <form className="flex flex-wrap gap-2 items-center" onSubmit={addBring}>
+                <input
+                  className="card px-3 py-2"
+                  placeholder="Libellé (ex: chips)"
+                  value={bringLabel}
+                  onChange={(e) => setBringLabel(e.target.value)}
+                />
+                <select
+                  className="card px-3 py-2 w-40"
+                  value={bringUnit}
+                  onChange={(e) => setBringUnit(e.target.value)}
+                >
+                  {UNIT_CHOICES.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={bringFreeStep}
+                  step={bringFreeStep}
+                  className="card px-3 py-2 w-24"
+                  value={bringQty}
+                  onChange={(e) => setBringQty(Number(e.target.value))}
+                  placeholder="Qté"
+                />
+                <button className="btn btn-primary" type="submit">
+                  Ajouter
+                </button>
+              </form>
+            )}
 
             <ul className="space-y-2">
               {myBring.length === 0 && <li className="text-cheepo-text2 text-sm">Rien pour l’instant.</li>}
