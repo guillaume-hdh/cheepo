@@ -46,9 +46,10 @@ type EventRow = {
   title: string;
   event_date: string | null;
   location: string | null;
-  share_code: string | null; // <-- pour le bouton Partager
+  share_code: string | null;
 };
 
+// util : grouper et totaliser
 function groupTotals<T extends { label: string; unit: string; quantity: number }>(rows: T[]) {
   const byKey = new Map<string, { label: string; unit: string; qty: number }>();
   for (const r of rows) {
@@ -58,6 +59,13 @@ function groupTotals<T extends { label: string; unit: string; quantity: number }
     else byKey.set(key, { label: r.label, unit: r.unit, qty: Number(r.quantity) || 0 });
   }
   return Array.from(byKey.values()).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// util : détection "grammes"
+function isGramUnit(u?: string | null) {
+  if (!u) return false;
+  const s = u.trim().toLowerCase();
+  return s === "g" || s === "gr" || s === "gramme" || s === "grammes";
 }
 
 export default function EventDetail() {
@@ -74,15 +82,21 @@ export default function EventDetail() {
   const [remain, setRemain] = useState<RemainingRow[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // Form states
-  const [eatSel, setEatSel] = useState<string>(""); // catalog id
+  // --- FORM STATES ---
+
+  // Qui mange quoi
+  const [eatSel, setEatSel] = useState<string>("");     // id catalogue OU "" => libre
+  const [eatLabel, setEatLabel] = useState<string>(""); // libre
+  const [eatUnit, setEatUnit] = useState<string>("portion");
   const [eatQty, setEatQty] = useState<number>(1);
 
-  const [bringSel, setBringSel] = useState<string>(""); // catalog id ou ""
-  const [bringLabel, setBringLabel] = useState<string>(""); // pour ajout libre
+  // Je ramène
+  const [bringSel, setBringSel] = useState<string>(""); // id catalogue OU "" => libre
+  const [bringLabel, setBringLabel] = useState<string>("");
   const [bringUnit, setBringUnit] = useState<string>("pièce");
   const [bringQty, setBringQty] = useState<number>(1);
 
+  // Courses
   const [shopLabel, setShopLabel] = useState<string>("");
   const [shopUnit, setShopUnit] = useState<string>("pièce");
   const [shopQty, setShopQty] = useState<number>(1);
@@ -93,7 +107,6 @@ export default function EventDetail() {
       const { data: u } = await supabase.auth.getUser();
       setMe(u.user?.id || null);
 
-      // Event (ajout de share_code)
       const { data: evData } = await supabase
         .from("events")
         .select("id,title,event_date,location,share_code")
@@ -101,7 +114,6 @@ export default function EventDetail() {
         .single();
       setEv(evData as EventRow | null);
 
-      // Catalog
       const { data: cat } = await supabase
         .from("catalog_items")
         .select("id,label,category,unit")
@@ -110,7 +122,6 @@ export default function EventDetail() {
         .order("label", { ascending: true });
       setCatalog(cat || []);
 
-      // Lists
       await reloadLists();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,24 +146,56 @@ export default function EventDetail() {
   const myBring = useMemo(() => bring.filter((b) => b.user_id === me), [bring, me]);
   const allBringTotals = useMemo(() => groupTotals(bring), [bring]);
 
+  // Pas dynamique (50g si grammes, sinon 1)
+  const eatStep = useMemo(() => {
+    const unit = eatSel ? catalog.find(c => c.id === eatSel)?.unit : eatUnit;
+    return isGramUnit(unit) ? 50 : 1;
+  }, [eatSel, eatUnit, catalog]);
+
+  const bringStep = useMemo(() => {
+    const unit = bringSel ? catalog.find(c => c.id === bringSel)?.unit : bringUnit;
+    return isGramUnit(unit) ? 50 : 1;
+  }, [bringSel, bringUnit, catalog]);
+
   // --- ACTIONS ---
+
   async function addEat(e: React.FormEvent) {
     e.preventDefault();
-    if (!me || !eatSel || eatQty <= 0) return;
-    const item = catalog.find((c) => c.id === eatSel);
-    if (!item) return;
+    if (!me || eatQty <= 0) return;
+
+    let label = eatLabel.trim();
+    let unit = eatUnit;
+    let category: string | null = null;
+    let catalogId: string | null = null;
+
+    if (eatSel) {
+      const item = catalog.find((c) => c.id === eatSel);
+      if (!item) return;
+      label = item.label;
+      unit = item.unit;
+      category = item.category;
+      catalogId = item.id;
+    } else {
+      if (!label) return; // en libre, le label est requis
+    }
+
     const { error } = await supabase.from("eat_selections").insert({
       event_id: eventId,
       user_id: me,
-      label: item.label,
-      category: item.category,
-      unit: item.unit,
+      label,
+      unit,
+      category,
       quantity: eatQty,
-      catalog_item_id: item.id,
+      catalog_item_id: catalogId,
     });
+
     if (error) setMsg("Erreur (eat): " + error.message);
     else {
       setEatQty(1);
+      if (!eatSel) {
+        setEatLabel("");
+        setEatUnit("portion");
+      }
       await reloadLists();
     }
   }
@@ -166,6 +209,7 @@ export default function EventDetail() {
   async function addBring(e: React.FormEvent) {
     e.preventDefault();
     if (!me || bringQty <= 0) return;
+
     let label = bringLabel.trim();
     let unit = bringUnit;
     let category: string | null = null;
@@ -178,8 +222,9 @@ export default function EventDetail() {
       unit = item.unit;
       category = item.category;
       catalogId = item.id;
+    } else {
+      if (!label) return;
     }
-    if (!label) return;
 
     const { error } = await supabase.from("bring_items").insert({
       event_id: eventId,
@@ -231,7 +276,7 @@ export default function EventDetail() {
     setBringQty(r.remaining);
   }
 
-  // UI helpers
+  // ----- UI -----
   function CatalogSelect({
     value,
     onChange,
@@ -241,7 +286,6 @@ export default function EventDetail() {
     onChange: (v: string) => void;
     placeholder?: string;
   }) {
-    // groupe par catégorie
     const groups = useMemo(() => {
       const map = new Map<string, CatalogItem[]>();
       for (const c of catalog) {
@@ -311,9 +355,29 @@ export default function EventDetail() {
           <div className="card p-6 space-y-3">
             <h3 className="font-semibold">Mes choix</h3>
             <form className="flex flex-wrap gap-2 items-center" onSubmit={addEat}>
-              <CatalogSelect value={eatSel} onChange={setEatSel} />
+              <CatalogSelect
+                value={eatSel}
+                onChange={(v) => { setEatSel(v); if (v) { setEatLabel(""); } }}
+                placeholder="Choisir (ou laisse vide pour libre)"
+              />
+              <span className="text-sm text-cheepo-text2">ou</span>
               <input
-                type="number" min={0.1} step={0.1}
+                className="card px-3 py-2"
+                placeholder="Ajout libre (ex: salade)"
+                value={eatLabel}
+                onChange={(e) => { setEatLabel(e.target.value); if (e.target.value) setEatSel(""); }}
+              />
+              <input
+                className="card px-3 py-2 w-28"
+                placeholder="unité"
+                value={eatUnit}
+                onChange={(e) => setEatUnit(e.target.value)}
+                disabled={!!eatSel}
+              />
+              <input
+                type="number"
+                min={eatStep}
+                step={eatStep}
                 className="card px-3 py-2 w-24"
                 value={eatQty}
                 onChange={(e) => setEatQty(Number(e.target.value))}
@@ -350,7 +414,11 @@ export default function EventDetail() {
           <div className="card p-6 space-y-3">
             <h3 className="font-semibold">Je ramène</h3>
             <form className="flex flex-wrap gap-2 items-center" onSubmit={addBring}>
-              <CatalogSelect value={bringSel} onChange={(v) => { setBringSel(v); if (v) { setBringLabel(""); } }} placeholder="Choisir (ou laisse vide pour libre)"/>
+              <CatalogSelect
+                value={bringSel}
+                onChange={(v) => { setBringSel(v); if (v) { setBringLabel(""); } }}
+                placeholder="Choisir (ou laisse vide pour libre)"
+              />
               <span className="text-sm text-cheepo-text2">ou</span>
               <input
                 className="card px-3 py-2"
@@ -366,7 +434,9 @@ export default function EventDetail() {
                 disabled={!!bringSel}
               />
               <input
-                type="number" min={0.1} step={0.1}
+                type="number"
+                min={bringStep}
+                step={bringStep}
                 className="card px-3 py-2 w-24"
                 value={bringQty}
                 onChange={(e) => setBringQty(Number(e.target.value))}
@@ -418,7 +488,7 @@ export default function EventDetail() {
             <form className="flex flex-wrap gap-2 items-center" onSubmit={addShopAddition}>
               <input className="card px-3 py-2" placeholder="Article (ex: glaçons)" value={shopLabel} onChange={(e)=>setShopLabel(e.target.value)} />
               <input className="card px-3 py-2 w-28" placeholder="unité" value={shopUnit} onChange={(e)=>setShopUnit(e.target.value)} />
-              <input type="number" min={0.1} step={0.1} className="card px-3 py-2 w-24" value={shopQty} onChange={(e)=>setShopQty(Number(e.target.value))} />
+              <input type="number" min={1} step={1} className="card px-3 py-2 w-24" value={shopQty} onChange={(e)=>setShopQty(Number(e.target.value))} />
               <button className="btn btn-primary" type="submit">Ajouter</button>
             </form>
             <p className="text-sm text-cheepo-text2">Ces ajouts <strong>n’affectent pas</strong> le catalogue global.</p>
