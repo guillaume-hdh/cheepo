@@ -276,7 +276,7 @@ export default function Events() {
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value)}
             aria-label="Code d’invitation"
-            inputMode="latin"
+            inputMode="text"
             autoCapitalize="characters"
           />
           <button type="submit" className="btn btn-primary" disabled={!codeOK}>
