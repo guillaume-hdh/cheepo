@@ -68,7 +68,7 @@ function isGramUnit(u?: string | null) {
   return s === "g" || s === "gr" || s === "gramme" || s === "grammes";
 }
 
-// liste d’unités proposées pour l’ajout libre
+// options d’unités proposées pour “ajout libre” et “courses”
 const UNIT_CHOICES = ["portion", "pièce", "bouteille", "g", "cl"];
 
 export default function EventDetail() {
@@ -170,6 +170,8 @@ export default function EventDetail() {
   }, [bringSel, catalog]);
 
   const bringFreeStep = useMemo(() => (isGramUnit(bringUnit) ? 50 : 1), [bringUnit]);
+
+  const shopStep = useMemo(() => (isGramUnit(shopUnit) ? 50 : 1), [shopUnit]);
 
   // ---------- ACTIONS : EAT ----------
   async function addEatFromCatalog(e: React.FormEvent) {
@@ -293,6 +295,42 @@ export default function EventDetail() {
     }
   }
 
+  // Tentative de suppression d’un article “reste à acheter”.
+  // Supprime seulement les lignes venant de shopping_additions (pas les écarts auto).
+  async function deleteRemaining(r: RemainingRow) {
+    const { data, error } = await supabase
+      .from("shopping_additions")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("label", r.label)
+      .eq("unit", r.unit);
+
+    if (error) {
+      setMsg("Erreur lors de la recherche: " + error.message);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setMsg("Cet article est calculé automatiquement et ne peut pas être supprimé.");
+      setTimeout(() => setMsg(null), 1500);
+      return;
+    }
+
+    const { error: delErr } = await supabase
+      .from("shopping_additions")
+      .delete()
+      .eq("event_id", eventId)
+      .eq("label", r.label)
+      .eq("unit", r.unit);
+
+    if (delErr) setMsg("Suppression impossible: " + delErr.message);
+    else {
+      setMsg("Article supprimé de la liste de courses.");
+      setTimeout(() => setMsg(null), 1200);
+      await reloadLists();
+    }
+  }
+
   // Prefill "Je ramène" depuis la liste des restants
   function takeFromRemaining(r: RemainingRow) {
     setTab("bring");
@@ -412,7 +450,7 @@ export default function EventDetail() {
               {eatFreeOpen ? "Masquer l’ajout libre" : "Ajout libre"}
             </button>
 
-            {/* Ligne 2 : ajout libre (affiché au clic) */}
+            {/* Ligne 2 : ajout libre */}
             {eatFreeOpen && (
               <form className="flex flex-wrap gap-2 items-center" onSubmit={addEatFromFree}>
                 <input
@@ -505,7 +543,7 @@ export default function EventDetail() {
               {bringFreeOpen ? "Masquer l’ajout libre" : "Ajout libre"}
             </button>
 
-            {/* Ligne 2 : ajout libre (affiché au clic) */}
+            {/* Ligne 2 : ajout libre */}
             {bringFreeOpen && (
               <form className="flex flex-wrap gap-2 items-center" onSubmit={addBring}>
                 <input
@@ -571,7 +609,10 @@ export default function EventDetail() {
               {remain.map((r) => (
                 <li key={`${r.label}-${r.unit}`} className="flex items-center justify-between">
                   <span>{r.label} — <span className="text-cheepo-text2">{r.remaining} {r.unit}</span></span>
-                  <button className="btn card" onClick={() => takeFromRemaining(r)}>Je ramène</button>
+                  <div className="flex items-center gap-2">
+                    <button className="btn card" onClick={() => takeFromRemaining(r)}>Je ramène</button>
+                    <button className="btn card" onClick={() => deleteRemaining(r)}>Supprimer</button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -580,9 +621,27 @@ export default function EventDetail() {
           <div className="card p-6 space-y-3">
             <h3 className="font-semibold">Ajouter un article à la liste de courses</h3>
             <form className="flex flex-wrap gap-2 items-center" onSubmit={addShopAddition}>
-              <input className="card px-3 py-2" placeholder="Article (ex: glaçons)" value={shopLabel} onChange={(e)=>setShopLabel(e.target.value)} />
-              <input className="card px-3 py-2 w-28" placeholder="unité" value={shopUnit} onChange={(e)=>setShopUnit(e.target.value)} />
-              <input type="number" min={1} step={1} className="card px-3 py-2 w-24" value={shopQty} onChange={(e)=>setShopQty(Number(e.target.value))} />
+              <input
+                className="card px-3 py-2"
+                placeholder="Article (ex: glaçons)"
+                value={shopLabel}
+                onChange={(e)=>setShopLabel(e.target.value)}
+              />
+              <select
+                className="card px-3 py-2 w-40"
+                value={shopUnit}
+                onChange={(e)=>setShopUnit(e.target.value)}
+              >
+                {UNIT_CHOICES.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+              <input
+                type="number"
+                min={shopStep}
+                step={shopStep}
+                className="card px-3 py-2 w-24"
+                value={shopQty}
+                onChange={(e)=>setShopQty(Number(e.target.value))}
+              />
               <button className="btn btn-primary" type="submit">Ajouter</button>
             </form>
             <p className="text-sm text-cheepo-text2">Ces ajouts <strong>n’affectent pas</strong> le catalogue global.</p>
