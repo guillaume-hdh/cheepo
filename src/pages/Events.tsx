@@ -161,6 +161,25 @@ export default function Events() {
     return "https://app.cheepo.fr";
   }
 
+  // -----------------------------
+  // Rejoindre via code (nouveau)
+  // -----------------------------
+  const [joinCode, setJoinCode] = useState("");
+  const codeOK = useMemo(
+    () => /^[A-Z0-9]{4,10}$/.test(joinCode.trim().toUpperCase()),
+    [joinCode]
+  );
+
+  function handleJoin(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const code = joinCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4,10}$/.test(code)) {
+      toast("Code invalide");
+      return;
+    }
+    nav(`/join/${code}`);
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
       <header className="flex items-center justify-between">
@@ -184,12 +203,10 @@ export default function Events() {
             onChange={(e) => setDate(e.target.value)}
             onFocus={onDateFocus}
             onBlur={onDateBlur}
-            placeholder="Date"
+            placeholder="jj/mm/aaaa"
             className="input"
             aria-label="Date de l’événement"
           />
-
-
           <input
             className="input"
             placeholder="Lieu (optionnel)"
@@ -238,14 +255,10 @@ export default function Events() {
                     Copier le lien
                   </button>
 
-                  <Link
-                    to={eventLink(ev)}
-                    className="btn btn-primary"
-                  >
+                  <Link to={eventLink(ev)} className="btn btn-primary">
                     Ouvrir
                   </Link>
                 </div>
-
               </li>
             ))}
           </ul>
@@ -255,10 +268,23 @@ export default function Events() {
       {/* Rejoindre via code */}
       <section className="bg-cheepo-sand card rounded-xl p-4 shadow-sm">
         <h2 className="font-semibold mb-3">Rejoindre via code</h2>
-        <p className="text-sm">
-          Tu as reçu un code ? Va sur <Link to="/join/XXXXXX" className="underline">/join/TONCODE</Link> (remplace TONCODE).
-        </p>
+
+        <form onSubmit={handleJoin} className="flex flex-col sm:flex-row gap-3 items-start">
+          <input
+            className="input w-full sm:max-w-xs"
+            placeholder="Ton code (ex. 7K4M2Q)"
+            value={joinCode}
+            onChange={(e) => setJoinCode(e.target.value)}
+            aria-label="Code d’invitation"
+            inputMode="latin"
+            autoCapitalize="characters"
+          />
+          <button type="submit" className="btn btn-primary" disabled={!codeOK}>
+            Rejoindre
+          </button>
+        </form>
       </section>
     </div>
   );
 }
+
