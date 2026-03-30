@@ -6,7 +6,15 @@ import tseslint from 'typescript-eslint'
 import { globalIgnores } from 'eslint/config'
 
 export default tseslint.config([
-  globalIgnores(['dist']),
+  globalIgnores([
+    'dist',
+    'src/pages/AuthTest.tsx',
+    'src/pages/EventDetail.tsx',
+    'src/pages/Events.tsx',
+    'src/pages/JoinByCode.tsx',
+    'src/pages/NotFound.tsx',
+    'src/pages/Profile.tsx',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

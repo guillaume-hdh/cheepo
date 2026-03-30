@@ -1,28 +1,45 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import "./index.css";
+import "./theme.css";
 
+import ProtectedRoute from "./components/ProtectedRoute";
+import Auth from "./pages/Auth";
 import Home from "./pages/Home";
-import Events from "./pages/Events";
-import Profile from "./pages/Profile";
-import EventDetail from "./pages/EventDetail";
-import NotFound from "./pages/NotFound";
-import AuthTest from "./pages/AuthTest";
-import JoinByCode from "./pages/JoinByCode";
+import EventsPage from "./pages/EventsPage";
+import EventDetailPage from "./pages/EventDetailPage";
+import NotFoundPage from "./pages/NotFoundPage";
+import JoinByCodePage from "./pages/JoinByCodePage";
+import { SessionProvider } from "./lib/session";
 
 const router = createBrowserRouter([
   { path: "/", element: <Home /> },
-  { path: "/events", element: <Events /> },
-  { path: "/events/:id", element: <EventDetail /> },
-  { path: "/profile", element: <Profile /> },
-  { path: "*", element: <NotFound /> },
-  { path: "/auth-test", element: <AuthTest /> },
-  { path: "/join/:code", element: <JoinByCode /> },
+  { path: "/auth", element: <Auth /> },
+  {
+    path: "/events",
+    element: (
+      <ProtectedRoute>
+        <EventsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/events/:eventId",
+    element: (
+      <ProtectedRoute>
+        <EventDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  { path: "/join/:code", element: <JoinByCodePage /> },
+  { path: "*", element: <NotFoundPage /> },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <SessionProvider>
+      <RouterProvider router={router} />
+    </SessionProvider>
   </React.StrictMode>
 );
