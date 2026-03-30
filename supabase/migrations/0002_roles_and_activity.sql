@@ -221,7 +221,7 @@ begin
     return coalesce(new, old);
   end if;
 
-  if tg_table_name = 'event_members' and tg_op = 'INSERT' and coalesce(new.role, '') = 'host' then
+  if tg_table_name = 'event_members' and tg_op = 'INSERT' and coalesce(new_payload ->> 'role', '') = 'host' then
     return new;
   end if;
 

@@ -80,6 +80,7 @@ Le repo versionne desormais le point de depart du backend dans:
 
 - `supabase/migrations/0001_initial.sql`
 - `supabase/migrations/0002_roles_and_activity.sql`
+- `supabase/migrations/0003_fix_activity_trigger.sql`
 
 Le front attend notamment:
 
@@ -102,7 +103,7 @@ La V2 ajoute:
 
 ### Activation SQL V2
 
-1. Execute `supabase/migrations/0002_roles_and_activity.sql` dans le SQL Editor du projet Supabase.
+1. Execute `supabase/migrations/0002_roles_and_activity.sql` puis `supabase/migrations/0003_fix_activity_trigger.sql` dans le SQL Editor du projet Supabase.
 2. Donne-toi le role Super-Admin avec ton email:
 
 ```sql
