@@ -30,6 +30,8 @@ VITE_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
+Un exemple minimal est fourni dans `.env.example`.
+
 3. Installe les dependances:
 
 ```bash
@@ -51,7 +53,7 @@ npm run build
 
 ## Deploiement
 
-Le workflow GitHub Actions compile l application puis deploie `dist/` sur Hostinger.
+Le workflow GitHub Actions lint, compile l application puis deploie `dist/` sur Hostinger.
 
 Les secrets necessaires cote GitHub sont:
 
@@ -60,6 +62,17 @@ Les secrets necessaires cote GitHub sont:
 - `SFTP_SERVER`
 - `SFTP_USER`
 - `SFTP_PASS`
+
+Ne mets pas `SUPABASE_SERVICE_ROLE_KEY` dans GitHub Actions: cette cle reste locale / admin.
+
+### Mise en ligne
+
+1. Dans GitHub, ouvre `Settings > Secrets and variables > Actions`.
+2. Cree ou mets a jour les 5 secrets ci-dessus.
+3. Verifie dans Hostinger que le dossier cible du sous-domaine `app.cheepo.fr` est bien `app/`.
+4. Pousse sur `main`.
+5. Dans GitHub, ouvre l onglet `Actions` et attends le workflow `Build & Deploy to Hostinger`.
+6. Quand le job est vert, recharge `https://app.cheepo.fr/` en navigation privee.
 
 ## Structure Supabase
 
