@@ -11,20 +11,41 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
   useEffect(() => {
     let active = true;
 
-    async function bootstrap() {
-      const { data } = await supabase.auth.getSession();
+    async function readPlatformAdminFlag(nextSession: Session | null) {
+      if (!nextSession?.user) {
+        return false;
+      }
+
+      const { data, error } = await supabase.rpc("is_platform_admin", {});
+
+      if (error) {
+        return false;
+      }
+
+      return Boolean(data);
+    }
+
+    async function applySession(nextSession: Session | null) {
+      const adminFlag = await readPlatformAdminFlag(nextSession);
 
       if (!active) {
         return;
       }
 
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setIsPlatformAdmin(adminFlag);
       setLoading(false);
+    }
+
+    async function bootstrap() {
+      const { data } = await supabase.auth.getSession();
+      await applySession(data.session);
     }
 
     void bootstrap();
@@ -36,9 +57,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      setLoading(false);
+      void applySession(nextSession);
     });
 
     return () => {
@@ -48,7 +67,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ loading, session, user }}>
+    <SessionContext.Provider value={{ loading, session, user, isPlatformAdmin }}>
       {children}
     </SessionContext.Provider>
   );

@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { Link, useParams } from "react-router-dom";
+import ActivityTimeline from "../components/ActivityTimeline";
 import AppShell from "../components/AppShell";
+import EditableChoiceManager, { type ChoiceDraft } from "../components/EditableChoiceManager";
+import EditableShoppingManager, {
+  type ShoppingDraft,
+} from "../components/EditableShoppingManager";
 import LoaderButton from "../components/LoaderButton";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/toast";
 import { useSession } from "../lib/useSession";
 import type {
+  ActivityLogRow,
   CatalogItem,
   ChoiceRow,
   EventRole,
@@ -16,6 +22,7 @@ import type {
   ShoppingRemainingRow,
 } from "../lib/types";
 import {
+  asActivityRows,
   asCatalogRows,
   asChoiceRows,
   asMemberRows,
@@ -41,6 +48,14 @@ type EventBundle = {
   bringItems: ChoiceRow[];
   shoppingAdditions: ShoppingAddition[];
   remainingRows: ShoppingRemainingRow[];
+  activityLogs: ActivityLogRow[];
+};
+
+type EventFormState = {
+  title: string;
+  description: string;
+  location: string;
+  event_date: string;
 };
 
 function readQuantityInput(value: string) {
@@ -63,12 +78,32 @@ function readErrorMessage(error: unknown) {
   return "Une erreur est survenue.";
 }
 
+function toDatetimeLocalValue(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const parsed = new Date(value);
+  const offset = parsed.getTimezoneOffset();
+  const localDate = new Date(parsed.getTime() - offset * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
 function formatRole(role: EventRole) {
   return role === "host" ? "Hote" : "Participant";
 }
 
 async function fetchEventBundle(eventId: string): Promise<EventBundle> {
-  const [eventResult, catalogResult, membersResult, eatResult, bringResult, shoppingResult, remainingResult] =
+  const [
+    eventResult,
+    catalogResult,
+    membersResult,
+    eatResult,
+    bringResult,
+    shoppingResult,
+    remainingResult,
+    activityResult,
+  ] =
     await Promise.all([
       supabase
         .from("events")
@@ -98,6 +133,7 @@ async function fetchEventBundle(eventId: string): Promise<EventBundle> {
         .eq("event_id", eventId)
         .order("created_at", { ascending: true }),
       supabase.rpc("get_shopping_remaining", { p_event_id: eventId }),
+      supabase.rpc("get_event_activity_log", { p_event_id: eventId }),
     ]);
 
   if (eventResult.error) {
@@ -140,12 +176,13 @@ async function fetchEventBundle(eventId: string): Promise<EventBundle> {
     bringItems: asChoiceRows(bringResult.data),
     shoppingAdditions: asShoppingAdditions(shoppingResult.data),
     remainingRows: asRemainingRows(remainingResult.data),
+    activityLogs: activityResult.error ? [] : asActivityRows(activityResult.data),
   };
 }
 
 export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
-  const { user } = useSession();
+  const { user, isPlatformAdmin } = useSession();
   const [tab, setTab] = useState<EventTab>("eat");
   const [eventRow, setEventRow] = useState<EventSummary | null>(null);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
@@ -154,8 +191,15 @@ export default function EventDetailPage() {
   const [bringItems, setBringItems] = useState<ChoiceRow[]>([]);
   const [shoppingAdditions, setShoppingAdditions] = useState<ShoppingAddition[]>([]);
   const [remainingRows, setRemainingRows] = useState<ShoppingRemainingRow[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [eventForm, setEventForm] = useState<EventFormState>({
+    title: "",
+    description: "",
+    location: "",
+    event_date: "",
+  });
   const [eatCatalogId, setEatCatalogId] = useState("");
   const [eatCatalogQuantity, setEatCatalogQuantity] = useState(1);
   const [eatCustomLabel, setEatCustomLabel] = useState("");
@@ -169,6 +213,9 @@ export default function EventDetailPage() {
   const [shoppingLabel, setShoppingLabel] = useState("");
   const [shoppingUnit, setShoppingUnit] = useState<string>("piece");
   const [shoppingQuantity, setShoppingQuantity] = useState(1);
+  const [eatDrafts, setEatDrafts] = useState<Record<string, ChoiceDraft>>({});
+  const [bringDrafts, setBringDrafts] = useState<Record<string, ChoiceDraft>>({});
+  const [shoppingDrafts, setShoppingDrafts] = useState<Record<string, ShoppingDraft>>({});
 
   useEffect(() => {
     if (!eventId) {
@@ -195,6 +242,7 @@ export default function EventDetailPage() {
         setBringItems(bundle.bringItems);
         setShoppingAdditions(bundle.shoppingAdditions);
         setRemainingRows(bundle.remainingRows);
+        setActivityLogs(bundle.activityLogs);
       } catch (error) {
         if (active) {
           toast(readErrorMessage(error));
@@ -213,6 +261,61 @@ export default function EventDetailPage() {
     };
   }, [eventId]);
 
+  useEffect(() => {
+    if (!eventRow) {
+      return;
+    }
+
+    setEventForm({
+      title: eventRow.title,
+      description: eventRow.description ?? "",
+      location: eventRow.location ?? "",
+      event_date: toDatetimeLocalValue(eventRow.event_date),
+    });
+  }, [eventRow]);
+
+  useEffect(() => {
+    const nextDrafts: Record<string, ChoiceDraft> = {};
+
+    for (const row of eatSelections) {
+      nextDrafts[row.id] = {
+        label: row.label,
+        unit: row.unit,
+        quantity: row.quantity,
+      };
+    }
+
+    setEatDrafts(nextDrafts);
+  }, [eatSelections]);
+
+  useEffect(() => {
+    const nextDrafts: Record<string, ChoiceDraft> = {};
+
+    for (const row of bringItems) {
+      nextDrafts[row.id] = {
+        label: row.label,
+        unit: row.unit,
+        quantity: row.quantity,
+      };
+    }
+
+    setBringDrafts(nextDrafts);
+  }, [bringItems]);
+
+  useEffect(() => {
+    const nextDrafts: Record<string, ShoppingDraft> = {};
+
+    for (const row of shoppingAdditions) {
+      nextDrafts[row.id] = {
+        label: row.label,
+        unit: row.unit,
+        quantity: row.quantity,
+      };
+    }
+
+    setShoppingDrafts(nextDrafts);
+  }, [shoppingAdditions]);
+
   const catalogOptions = useMemo(() => sortCatalog(catalog), [catalog]);
   const myEat = useMemo(
     () => eatSelections.filter((row) => row.user_id === user?.id),
@@ -228,6 +331,16 @@ export default function EventDetailPage() {
   );
   const eatTotals = useMemo(() => groupTotals(eatSelections), [eatSelections]);
   const bringTotals = useMemo(() => groupTotals(bringItems), [bringItems]);
+  const memberNames = useMemo(
+    () =>
+      new Map(
+        members.map((member) => [
+          member.user_id,
+          member.display_name || member.email || "Participant",
+        ]),
+      ),
+    [members],
+  );
   const eatCatalogUnit = useMemo(
     () => catalogOptions.find((item) => item.id === eatCatalogId)?.unit ?? "portion",
     [catalogOptions, eatCatalogId],
@@ -237,6 +350,7 @@ export default function EventDetailPage() {
     [catalogOptions, bringCatalogId],
   );
   const isHost = eventRow?.host_id === user?.id;
+  const canManageEvent = Boolean(user && (isPlatformAdmin || isHost));
 
   function renderCatalogOptions() {
     const groups = new Map<string, CatalogItem[]>();
@@ -276,6 +390,7 @@ export default function EventDetailPage() {
     setBringItems(bundle.bringItems);
     setShoppingAdditions(bundle.shoppingAdditions);
     setRemainingRows(bundle.remainingRows);
+    setActivityLogs(bundle.activityLogs);
   }
 
   async function insertChoice(
@@ -464,6 +579,155 @@ export default function EventDetailPage() {
     await reloadPage();
   }
 
+  function handleEventFormChange(field: keyof EventFormState, value: string) {
+    setEventForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function handleEventSave(formEvent: FormEvent<HTMLFormElement>) {
+    formEvent.preventDefault();
+
+    if (!eventId || !canManageEvent) {
+      return;
+    }
+
+    if (!eventForm.title.trim()) {
+      toast("Ajoute un titre");
+      return;
+    }
+
+    setWorking(true);
+
+    const { error } = await supabase
+      .from("events")
+      .update({
+        title: eventForm.title.trim(),
+        description: eventForm.description.trim() || null,
+        location: eventForm.location.trim() || null,
+        event_date: eventForm.event_date ? new Date(eventForm.event_date).toISOString() : null,
+      })
+      .eq("id", eventId);
+
+    setWorking(false);
+
+    if (error) {
+      toast(error.message);
+      return;
+    }
+
+    toast("Evenement mis a jour");
+    await reloadPage();
+  }
+
+  async function handleRemoveMember(memberUserId: string) {
+    if (!eventId || !canManageEvent) {
+      return;
+    }
+
+    setWorking(true);
+
+    const { error } = await supabase
+      .from("event_members")
+      .delete()
+      .eq("event_id", eventId)
+      .eq("user_id", memberUserId);
+
+    setWorking(false);
+
+    if (error) {
+      toast(error.message);
+      return;
+    }
+
+    toast("Participant retire");
+    await reloadPage();
+  }
+
+  function handleChoiceDraftChange(
+    setDrafts: Dispatch<SetStateAction<Record<string, ChoiceDraft>>>,
+    rowId: string,
+    field: keyof ChoiceDraft,
+    value: string | number,
+  ) {
+    setDrafts((current) => ({
+      ...current,
+      [rowId]: {
+        ...(current[rowId] ?? { label: "", unit: "", quantity: 1 }),
+        [field]: field === "quantity" ? Number(value) || 1 : value,
+      },
+    }));
+  }
+
+  function handleShoppingDraftChange(rowId: string, field: keyof ShoppingDraft, value: string | number) {
+    setShoppingDrafts((current) => ({
+      ...current,
+      [rowId]: {
+        ...(current[rowId] ?? { label: "", unit: "", quantity: 1 }),
+        [field]: field === "quantity" ? Number(value) || 1 : value,
+      },
+    }));
+  }
+
+  async function handleChoiceUpdate(
+    table: "eat_selections" | "bring_items",
+    rowId: string,
+    draft: ChoiceDraft | undefined,
+  ) {
+    if (!draft) {
+      return;
+    }
+
+    setWorking(true);
+
+    const { error } = await supabase
+      .from(table)
+      .update({
+        label: draft.label.trim(),
+        unit: draft.unit.trim(),
+        quantity: draft.quantity,
+      })
+      .eq("id", rowId);
+
+    setWorking(false);
+
+    if (error) {
+      toast(error.message);
+      return;
+    }
+
+    toast("Modification enregistree");
+    await reloadPage();
+  }
+
+  async function handleShoppingUpdate(rowId: string, draft: ShoppingDraft | undefined) {
+    if (!draft) {
+      return;
+    }
+
+    setWorking(true);
+
+    const { error } = await supabase
+      .from("shopping_additions")
+      .update({
+        label: draft.label.trim(),
+        unit: draft.unit.trim(),
+        quantity: draft.quantity,
+      })
+      .eq("id", rowId);
+
+    setWorking(false);
+
+    if (error) {
+      toast(error.message);
+      return;
+    }
+
+    toast("Course mise a jour");
+    await reloadPage();
+  }
+
   function handleTakeRemaining(row: ShoppingRemainingRow) {
     setTab("bring");
     setBringCatalogId("");
@@ -505,6 +769,7 @@ export default function EventDetailPage() {
       actions={
         <div className="hero-actions">
           {eventRow ? <span className="pill pill-soft">Code {eventRow.share_code}</span> : null}
+          {isPlatformAdmin ? <span className="pill">Super-Admin</span> : null}
           {isHost ? <span className="pill">Hote</span> : null}
           <button type="button" className="btn btn-secondary" onClick={() => void handleCopyInvite()}>
             Copier l invitation
@@ -573,12 +838,78 @@ export default function EventDetailPage() {
                       <span>
                         {formatRole(member.role)}{member.email ? ` - ${member.email}` : ""}
                       </span>
+                      {canManageEvent && member.role !== "host" ? (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={working}
+                          onClick={() => void handleRemoveMember(member.user_id)}
+                        >
+                          Retirer
+                        </button>
+                      ) : null}
                     </article>
                   ))
                 )}
               </div>
             </section>
           </div>
+
+          {canManageEvent ? (
+            <section className="panel stack-lg">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Administration</p>
+                  <h2>Modifier l evenement</h2>
+                </div>
+              </div>
+
+              <form className="stack-md" onSubmit={handleEventSave}>
+                <label className="field-block">
+                  <span>Titre</span>
+                  <input
+                    className="field-input"
+                    value={eventForm.title}
+                    onChange={(event) => handleEventFormChange("title", event.target.value)}
+                  />
+                </label>
+
+                <div className="grid-two">
+                  <label className="field-block">
+                    <span>Date</span>
+                    <input
+                      className="field-input"
+                      type="datetime-local"
+                      value={eventForm.event_date}
+                      onChange={(event) => handleEventFormChange("event_date", event.target.value)}
+                    />
+                  </label>
+
+                  <label className="field-block">
+                    <span>Lieu</span>
+                    <input
+                      className="field-input"
+                      value={eventForm.location}
+                      onChange={(event) => handleEventFormChange("location", event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <label className="field-block">
+                  <span>Description</span>
+                  <textarea
+                    className="field-input field-textarea"
+                    value={eventForm.description}
+                    onChange={(event) => handleEventFormChange("description", event.target.value)}
+                  />
+                </label>
+
+                <LoaderButton type="submit" loading={working}>
+                  Enregistrer les infos
+                </LoaderButton>
+              </form>
+            </section>
+          ) : null}
 
           <div className="tab-row">
             <button
@@ -602,11 +933,19 @@ export default function EventDetailPage() {
             >
               Courses
             </button>
+            <button
+              type="button"
+              className={tab === "activity" ? "tab tab-active" : "tab"}
+              onClick={() => setTab("activity")}
+            >
+              Journal
+            </button>
           </div>
 
           {tab === "eat" ? (
-            <div className="dashboard-grid">
-              <section className="panel stack-lg">
+            <>
+              <div className="dashboard-grid">
+                <section className="panel stack-lg">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Mes envies</p>
@@ -699,9 +1038,9 @@ export default function EventDetailPage() {
                     Ajouter librement
                   </LoaderButton>
                 </form>
-              </section>
+                </section>
 
-              <section className="panel stack-lg">
+                <section className="panel stack-lg">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Recap</p>
@@ -756,13 +1095,33 @@ export default function EventDetailPage() {
                     </div>
                   )}
                 </div>
-              </section>
-            </div>
+                </section>
+              </div>
+
+              {canManageEvent ? (
+                <EditableChoiceManager
+                  title="Tous les repas de l evenement"
+                  emptyMessage="Aucune ligne repas a corriger."
+                  rows={eatSelections}
+                  ownerLabels={memberNames}
+                  drafts={eatDrafts}
+                  loading={working}
+                  onDraftChange={(rowId, field, value) =>
+                    handleChoiceDraftChange(setEatDrafts, rowId, field, value)
+                  }
+                  onSave={async (rowId) =>
+                    handleChoiceUpdate("eat_selections", rowId, eatDrafts[rowId])
+                  }
+                  onDelete={async (rowId) => handleDeleteChoice("eat_selections", rowId)}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {tab === "bring" ? (
-            <div className="dashboard-grid">
-              <section className="panel stack-lg">
+            <>
+              <div className="dashboard-grid">
+                <section className="panel stack-lg">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Contributions</p>
@@ -855,9 +1214,9 @@ export default function EventDetailPage() {
                     Ajouter ma contribution
                   </LoaderButton>
                 </form>
-              </section>
+                </section>
 
-              <section className="panel stack-lg">
+                <section className="panel stack-lg">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Recap</p>
@@ -912,13 +1271,33 @@ export default function EventDetailPage() {
                     </div>
                   )}
                 </div>
-              </section>
-            </div>
+                </section>
+              </div>
+
+              {canManageEvent ? (
+                <EditableChoiceManager
+                  title="Tous les apports de l evenement"
+                  emptyMessage="Aucune ligne apport a corriger."
+                  rows={bringItems}
+                  ownerLabels={memberNames}
+                  drafts={bringDrafts}
+                  loading={working}
+                  onDraftChange={(rowId, field, value) =>
+                    handleChoiceDraftChange(setBringDrafts, rowId, field, value)
+                  }
+                  onSave={async (rowId) =>
+                    handleChoiceUpdate("bring_items", rowId, bringDrafts[rowId])
+                  }
+                  onDelete={async (rowId) => handleDeleteChoice("bring_items", rowId)}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {tab === "shop" ? (
-            <div className="dashboard-grid">
-              <section className="panel stack-lg">
+            <>
+              <div className="dashboard-grid">
+                <section className="panel stack-lg">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">A acheter</p>
@@ -950,9 +1329,9 @@ export default function EventDetailPage() {
                     ))}
                   </div>
                 )}
-              </section>
+                </section>
 
-              <section className="panel stack-lg">
+                <section className="panel stack-lg">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Ajout manuel</p>
@@ -1033,8 +1412,34 @@ export default function EventDetailPage() {
                     </div>
                   )}
                 </div>
-              </section>
-            </div>
+                </section>
+              </div>
+
+              {canManageEvent ? (
+                <EditableShoppingManager
+                  rows={shoppingAdditions}
+                  ownerLabels={memberNames}
+                  drafts={shoppingDrafts}
+                  loading={working}
+                  onDraftChange={handleShoppingDraftChange}
+                  onSave={async (rowId) => handleShoppingUpdate(rowId, shoppingDrafts[rowId])}
+                  onDelete={async (rowId) => handleDeleteShopping(rowId)}
+                />
+              ) : null}
+            </>
+          ) : null}
+
+          {tab === "activity" ? (
+            <section className="panel stack-lg">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Audit</p>
+                  <h2>Journal des modifications</h2>
+                </div>
+              </div>
+
+              <ActivityTimeline logs={activityLogs} />
+            </section>
           ) : null}
         </>
       )}

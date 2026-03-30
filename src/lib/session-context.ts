@@ -5,6 +5,7 @@ export type SessionContextValue = {
   loading: boolean;
   session: Session | null;
   user: User | null;
+  isPlatformAdmin: boolean;
 };
 
 export const SessionContext = createContext<SessionContextValue | undefined>(undefined);

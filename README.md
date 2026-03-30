@@ -79,6 +79,7 @@ Ne mets pas `SUPABASE_SERVICE_ROLE_KEY` dans GitHub Actions: cette cle reste loc
 Le repo versionne desormais le point de depart du backend dans:
 
 - `supabase/migrations/0001_initial.sql`
+- `supabase/migrations/0002_roles_and_activity.sql`
 
 Le front attend notamment:
 
@@ -90,3 +91,26 @@ Le front attend notamment:
 - `bring_items`
 - `shopping_additions`
 - les fonctions RPC `create_event`, `join_event_by_code`, `get_event_members`, `get_shopping_remaining`
+
+## V2
+
+La V2 ajoute:
+
+- un role `Super-Admin` via la table `public.platform_admins`
+- un journal des modifications via `public.event_activity_log`
+- des permissions etendues pour l hote sur son evenement
+
+### Activation SQL V2
+
+1. Execute `supabase/migrations/0002_roles_and_activity.sql` dans le SQL Editor du projet Supabase.
+2. Donne-toi le role Super-Admin avec ton email:
+
+```sql
+insert into public.platform_admins (user_id)
+select id
+from public.profiles
+where email = 'ton-email@exemple.com'
+on conflict do nothing;
+```
+
+3. Reconnecte-toi a l application pour recharger tes permissions.

@@ -1,4 +1,6 @@
 import type {
+  ActivityLogRow,
+  AdminEventOverview,
   CatalogItem,
   ChoiceRow,
   EventSummary,
@@ -186,6 +188,29 @@ export function asRemainingRows(data: unknown) {
       needed: toNumber(remaining.needed),
       brought: toNumber(remaining.brought),
       remaining: toNumber(remaining.remaining),
+    };
+  });
+}
+
+export function asActivityRows(data: unknown) {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map((row) => row as ActivityLogRow);
+}
+
+export function asAdminEventRows(data: unknown) {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map((row) => {
+    const eventRow = row as AdminEventOverview;
+
+    return {
+      ...eventRow,
+      member_count: toNumber(eventRow.member_count),
     };
   });
 }

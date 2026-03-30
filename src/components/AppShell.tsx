@@ -26,7 +26,7 @@ function displayName(email: string | null, metadataName: unknown) {
 
 export default function AppShell({ title, subtitle, actions, children }: AppShellProps) {
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, isPlatformAdmin } = useSession();
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
@@ -59,6 +59,12 @@ export default function AppShell({ title, subtitle, actions, children }: AppShel
           <Link to="/events" className="btn btn-ghost">
             Tableau de bord
           </Link>
+
+          {isPlatformAdmin ? (
+            <Link to="/admin" className="btn btn-ghost">
+              Super-Admin
+            </Link>
+          ) : null}
 
           <div className="user-chip">
             <span className="chip-label">Connecte</span>

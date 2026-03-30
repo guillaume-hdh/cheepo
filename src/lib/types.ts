@@ -1,5 +1,5 @@
 export type EventRole = "host" | "member";
-export type EventTab = "eat" | "bring" | "shop";
+export type EventTab = "eat" | "bring" | "shop" | "activity";
 
 export type EventSummary = {
   id: string;
@@ -57,4 +57,32 @@ export type ShoppingRemainingRow = {
   needed: number;
   brought: number;
   remaining: number;
+};
+
+export type ActivityLogRow = {
+  id: string;
+  event_id: string;
+  actor_user_id: string | null;
+  actor_name: string | null;
+  entity_type: string;
+  entity_id: string | null;
+  action: "insert" | "update" | "delete";
+  summary: string;
+  old_values: Record<string, unknown> | null;
+  new_values: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type AdminEventOverview = {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  event_date: string | null;
+  share_code: string;
+  host_id: string;
+  host_name: string;
+  host_email: string | null;
+  member_count: number;
+  created_at: string;
 };
