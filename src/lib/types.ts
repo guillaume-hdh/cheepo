@@ -1,5 +1,7 @@
 export type EventRole = "host" | "member";
-export type EventTab = "eat" | "bring" | "shop" | "activity";
+export type EventStatus = "active" | "archived";
+export type InvitationStatus = "pending" | "accepted" | "revoked";
+export type EventTab = "eat" | "bring" | "shop" | "activity" | "manage";
 
 export type EventSummary = {
   id: string;
@@ -9,6 +11,8 @@ export type EventSummary = {
   event_date: string | null;
   share_code: string;
   host_id: string;
+  status: EventStatus;
+  archived_at: string | null;
   created_at: string;
 };
 
@@ -83,6 +87,21 @@ export type AdminEventOverview = {
   host_id: string;
   host_name: string;
   host_email: string | null;
+  status: EventStatus;
   member_count: number;
   created_at: string;
+};
+
+export type EventInvitation = {
+  id: string;
+  event_id: string;
+  email: string;
+  status: InvitationStatus;
+  message: string | null;
+  invited_by: string;
+  invited_at: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  accepted_by: string | null;
+  accepted_user_name: string | null;
 };

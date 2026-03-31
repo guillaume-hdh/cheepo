@@ -1,5 +1,5 @@
 import type { ActivityLogRow } from "../lib/types";
-import { formatTimestamp } from "../lib/utils";
+import { formatEventDate, formatTimestamp } from "../lib/utils";
 
 type ActivityTimelineProps = {
   logs: ActivityLogRow[];
@@ -10,10 +10,37 @@ function summarizeSnapshot(snapshot: Record<string, unknown> | null) {
     return null;
   }
 
-  const orderedKeys = ["title", "event_date", "location", "description", "label", "quantity", "unit", "role"];
+  const labels = new Map<string, string>([
+    ["title", "Titre"],
+    ["event_date", "Date"],
+    ["location", "Lieu"],
+    ["description", "Description"],
+    ["label", "Libelle"],
+    ["quantity", "Quantite"],
+    ["unit", "Unite"],
+    ["role", "Role"],
+    ["status", "Statut"],
+  ]);
+  const orderedKeys = ["title", "event_date", "location", "description", "label", "quantity", "unit", "role", "status"];
   const details = orderedKeys
     .filter((key) => key in snapshot && snapshot[key] != null && `${snapshot[key]}` !== "")
-    .map((key) => `${key}: ${snapshot[key]}`);
+    .map((key) => {
+      const rawValue = `${snapshot[key]}`;
+
+      if (key === "role") {
+        return `${labels.get(key)}: ${rawValue === "host" ? "Hote" : "Participant"}`;
+      }
+
+      if (key === "status") {
+        return `${labels.get(key)}: ${rawValue === "archived" ? "Archive" : "Actif"}`;
+      }
+
+      if (key === "event_date") {
+        return `${labels.get(key)}: ${formatEventDate(rawValue)}`;
+      }
+
+      return `${labels.get(key) ?? key}: ${rawValue}`;
+    });
 
   return details.length > 0 ? details.join(" | ") : null;
 }
@@ -34,7 +61,7 @@ export default function ActivityTimeline({ logs }: ActivityTimelineProps) {
             <div>
               <strong>{log.summary}</strong>
               <span>
-                {log.actor_name || "System"} - {formatTimestamp(log.created_at)}
+                {log.actor_name || "Systeme"} - {formatTimestamp(log.created_at)}
               </span>
               {oldSummary ? <span>Avant: {oldSummary}</span> : null}
               {newSummary ? <span>Apres: {newSummary}</span> : null}

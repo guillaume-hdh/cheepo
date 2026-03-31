@@ -14,6 +14,7 @@ import type {
   ActivityLogRow,
   CatalogItem,
   ChoiceRow,
+  EventInvitation,
   EventRole,
   EventSummary,
   EventTab,
@@ -25,14 +26,18 @@ import {
   asActivityRows,
   asCatalogRows,
   asChoiceRows,
+  asInvitationRows,
   asMemberRows,
   asRemainingRows,
   asShoppingAdditions,
+  buildMailtoLink,
   buildShareLink,
   copyText,
   formatEventDate,
+  formatInvitationStatus,
   formatQuantity,
   formatTimestamp,
+  friendlyErrorMessage,
   groupTotals,
   quantityStepForUnit,
   sortCatalog,
@@ -49,6 +54,7 @@ type EventBundle = {
   shoppingAdditions: ShoppingAddition[];
   remainingRows: ShoppingRemainingRow[];
   activityLogs: ActivityLogRow[];
+  invitations: EventInvitation[];
 };
 
 type EventFormState = {
@@ -58,6 +64,11 @@ type EventFormState = {
   event_date: string;
 };
 
+type InvitationFormState = {
+  email: string;
+  message: string;
+};
+
 function readQuantityInput(value: string) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
@@ -65,13 +76,13 @@ function readQuantityInput(value: string) {
 
 function readErrorMessage(error: unknown) {
   if (error instanceof Error && error.message) {
-    return error.message;
+    return friendlyErrorMessage(error.message);
   }
 
   if (typeof error === "object" && error && "message" in error) {
     const message = (error as { message?: unknown }).message;
     if (typeof message === "string" && message) {
-      return message;
+      return friendlyErrorMessage(message);
     }
   }
 
@@ -103,11 +114,12 @@ async function fetchEventBundle(eventId: string): Promise<EventBundle> {
     shoppingResult,
     remainingResult,
     activityResult,
+    invitationsResult,
   ] =
     await Promise.all([
       supabase
         .from("events")
-        .select("id,title,description,location,event_date,share_code,host_id,created_at")
+        .select("id,title,description,location,event_date,share_code,host_id,status,archived_at,created_at")
         .eq("id", eventId)
         .single(),
       supabase
@@ -134,6 +146,7 @@ async function fetchEventBundle(eventId: string): Promise<EventBundle> {
         .order("created_at", { ascending: true }),
       supabase.rpc("get_shopping_remaining", { p_event_id: eventId }),
       supabase.rpc("get_event_activity_log", { p_event_id: eventId }),
+      supabase.rpc("get_event_invitations", { p_event_id: eventId }),
     ]);
 
   if (eventResult.error) {
@@ -177,6 +190,7 @@ async function fetchEventBundle(eventId: string): Promise<EventBundle> {
     shoppingAdditions: asShoppingAdditions(shoppingResult.data),
     remainingRows: asRemainingRows(remainingResult.data),
     activityLogs: activityResult.error ? [] : asActivityRows(activityResult.data),
+    invitations: invitationsResult.error ? [] : asInvitationRows(invitationsResult.data),
   };
 }
 
@@ -192,6 +206,7 @@ export default function EventDetailPage() {
   const [shoppingAdditions, setShoppingAdditions] = useState<ShoppingAddition[]>([]);
   const [remainingRows, setRemainingRows] = useState<ShoppingRemainingRow[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLogRow[]>([]);
+  const [invitations, setInvitations] = useState<EventInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [eventForm, setEventForm] = useState<EventFormState>({
@@ -200,6 +215,12 @@ export default function EventDetailPage() {
     location: "",
     event_date: "",
   });
+  const [invitationForm, setInvitationForm] = useState<InvitationFormState>({
+    email: "",
+    message: "",
+  });
+  const [duplicateTitle, setDuplicateTitle] = useState("");
+  const [nextHostId, setNextHostId] = useState("");
   const [eatCatalogId, setEatCatalogId] = useState("");
   const [eatCatalogQuantity, setEatCatalogQuantity] = useState(1);
   const [eatCustomLabel, setEatCustomLabel] = useState("");
@@ -243,6 +264,7 @@ export default function EventDetailPage() {
         setShoppingAdditions(bundle.shoppingAdditions);
         setRemainingRows(bundle.remainingRows);
         setActivityLogs(bundle.activityLogs);
+        setInvitations(bundle.invitations);
       } catch (error) {
         if (active) {
           toast(readErrorMessage(error));
@@ -272,7 +294,13 @@ export default function EventDetailPage() {
       location: eventRow.location ?? "",
       event_date: toDatetimeLocalValue(eventRow.event_date),
     });
+    setDuplicateTitle(`${eventRow.title} (copie)`);
   }, [eventRow]);
+
+  useEffect(() => {
+    const candidate = members.find((member) => member.role !== "host");
+    setNextHostId(candidate?.user_id ?? "");
+  }, [members]);
 
   useEffect(() => {
     const nextDrafts: Record<string, ChoiceDraft> = {};
@@ -350,7 +378,16 @@ export default function EventDetailPage() {
     [catalogOptions, bringCatalogId],
   );
   const isHost = eventRow?.host_id === user?.id;
+  const isArchived = eventRow?.status === "archived";
   const canManageEvent = Boolean(user && (isPlatformAdmin || isHost));
+  const transferableMembers = useMemo(
+    () => members.filter((member) => member.role !== "host"),
+    [members],
+  );
+  const pendingInvitations = useMemo(
+    () => invitations.filter((invitation) => invitation.status === "pending"),
+    [invitations],
+  );
 
   function renderCatalogOptions() {
     const groups = new Map<string, CatalogItem[]>();
@@ -391,6 +428,7 @@ export default function EventDetailPage() {
     setShoppingAdditions(bundle.shoppingAdditions);
     setRemainingRows(bundle.remainingRows);
     setActivityLogs(bundle.activityLogs);
+    setInvitations(bundle.invitations);
   }
 
   async function insertChoice(
@@ -419,7 +457,7 @@ export default function EventDetailPage() {
     setWorking(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return false;
     }
 
@@ -523,7 +561,7 @@ export default function EventDetailPage() {
     setWorking(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return;
     }
 
@@ -556,7 +594,7 @@ export default function EventDetailPage() {
     setWorking(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return;
     }
 
@@ -572,7 +610,7 @@ export default function EventDetailPage() {
     setWorking(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return;
     }
 
@@ -613,7 +651,7 @@ export default function EventDetailPage() {
     setWorking(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return;
     }
 
@@ -637,11 +675,156 @@ export default function EventDetailPage() {
     setWorking(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return;
     }
 
     toast("Participant retire");
+    await reloadPage();
+  }
+
+  function handleInvitationFormChange(field: keyof InvitationFormState, value: string) {
+    setInvitationForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function handleCreateInvitation(formEvent: FormEvent<HTMLFormElement>) {
+    formEvent.preventDefault();
+
+    if (!eventId || !eventRow || !canManageEvent) {
+      return;
+    }
+
+    if (!invitationForm.email.trim()) {
+      toast("Ajoute un email");
+      return;
+    }
+
+    setWorking(true);
+
+    const { error } = await supabase.rpc("create_event_invitation", {
+      p_event_id: eventId,
+      p_email: invitationForm.email.trim(),
+      p_message: invitationForm.message.trim() || null,
+    });
+
+    setWorking(false);
+
+    if (error) {
+      toast(friendlyErrorMessage(error.message));
+      return;
+    }
+
+    const inviteLink = buildShareLink(eventRow.share_code);
+    const subject = `Invitation pour ${eventRow.title}`;
+    const body = [
+      `Bonjour,`,
+      ``,
+      `Tu es invite a l evenement "${eventRow.title}".`,
+      invitationForm.message.trim() || `Tu peux rejoindre l evenement avec ce lien : ${inviteLink}`,
+      ``,
+      `Lien d invitation : ${inviteLink}`,
+    ].join("\n");
+
+    window.location.href = buildMailtoLink(invitationForm.email.trim(), subject, body);
+    setInvitationForm({ email: "", message: "" });
+    toast("Invitation preparee");
+    await reloadPage();
+  }
+
+  async function handleRevokeInvitation(invitationId: string) {
+    setWorking(true);
+
+    const { error } = await supabase.rpc("revoke_event_invitation", {
+      p_invitation_id: invitationId,
+    });
+
+    setWorking(false);
+
+    if (error) {
+      toast(friendlyErrorMessage(error.message));
+      return;
+    }
+
+    toast("Invitation revoquee");
+    await reloadPage();
+  }
+
+  async function handleArchiveToggle() {
+    if (!eventId || !eventRow || !canManageEvent) {
+      return;
+    }
+
+    setWorking(true);
+
+    const { error } = await supabase.rpc("archive_event", {
+      p_event_id: eventId,
+      p_archived: !isArchived,
+    });
+
+    setWorking(false);
+
+    if (error) {
+      toast(friendlyErrorMessage(error.message));
+      return;
+    }
+
+    toast(isArchived ? "Evenement reactive" : "Evenement archive");
+    await reloadPage();
+  }
+
+  async function handleDuplicateEvent() {
+    if (!eventId || !canManageEvent) {
+      return;
+    }
+
+    setWorking(true);
+
+    const { data, error } = await supabase.rpc("duplicate_event", {
+      p_event_id: eventId,
+      p_title: duplicateTitle.trim() || null,
+    });
+
+    setWorking(false);
+
+    if (error) {
+      toast(friendlyErrorMessage(error.message));
+      return;
+    }
+
+    const newEventId = typeof data === "string" ? data : null;
+
+    toast("Evenement duplique");
+    if (newEventId) {
+      window.location.href = `/events/${newEventId}`;
+      return;
+    }
+
+    await reloadPage();
+  }
+
+  async function handleTransferHost() {
+    if (!eventId || !canManageEvent || !nextHostId) {
+      return;
+    }
+
+    setWorking(true);
+
+    const { error } = await supabase.rpc("transfer_event_host", {
+      p_event_id: eventId,
+      p_new_host_user_id: nextHostId,
+    });
+
+    setWorking(false);
+
+    if (error) {
+      toast(friendlyErrorMessage(error.message));
+      return;
+    }
+
+    toast("Role d hote transfere");
     await reloadPage();
   }
 
@@ -693,7 +876,7 @@ export default function EventDetailPage() {
     setWorking(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return;
     }
 
@@ -720,7 +903,7 @@ export default function EventDetailPage() {
     setWorking(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return;
     }
 
@@ -812,6 +995,10 @@ export default function EventDetailPage() {
                   <dt>Participants</dt>
                   <dd>{members.length}</dd>
                 </div>
+                <div>
+                  <dt>Statut</dt>
+                  <dd>{isArchived ? "Archive" : "Actif"}</dd>
+                </div>
               </dl>
 
               <div className="callout">
@@ -855,62 +1042,6 @@ export default function EventDetailPage() {
             </section>
           </div>
 
-          {canManageEvent ? (
-            <section className="panel stack-lg">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Administration</p>
-                  <h2>Modifier l evenement</h2>
-                </div>
-              </div>
-
-              <form className="stack-md" onSubmit={handleEventSave}>
-                <label className="field-block">
-                  <span>Titre</span>
-                  <input
-                    className="field-input"
-                    value={eventForm.title}
-                    onChange={(event) => handleEventFormChange("title", event.target.value)}
-                  />
-                </label>
-
-                <div className="grid-two">
-                  <label className="field-block">
-                    <span>Date</span>
-                    <input
-                      className="field-input"
-                      type="datetime-local"
-                      value={eventForm.event_date}
-                      onChange={(event) => handleEventFormChange("event_date", event.target.value)}
-                    />
-                  </label>
-
-                  <label className="field-block">
-                    <span>Lieu</span>
-                    <input
-                      className="field-input"
-                      value={eventForm.location}
-                      onChange={(event) => handleEventFormChange("location", event.target.value)}
-                    />
-                  </label>
-                </div>
-
-                <label className="field-block">
-                  <span>Description</span>
-                  <textarea
-                    className="field-input field-textarea"
-                    value={eventForm.description}
-                    onChange={(event) => handleEventFormChange("description", event.target.value)}
-                  />
-                </label>
-
-                <LoaderButton type="submit" loading={working}>
-                  Enregistrer les infos
-                </LoaderButton>
-              </form>
-            </section>
-          ) : null}
-
           <div className="tab-row">
             <button
               type="button"
@@ -940,6 +1071,15 @@ export default function EventDetailPage() {
             >
               Journal
             </button>
+            {canManageEvent ? (
+              <button
+                type="button"
+                className={tab === "manage" ? "tab tab-active" : "tab"}
+                onClick={() => setTab("manage")}
+              >
+                Gestion
+              </button>
+            ) : null}
           </div>
 
           {tab === "eat" ? (
@@ -1427,6 +1567,221 @@ export default function EventDetailPage() {
                 />
               ) : null}
             </>
+          ) : null}
+
+          {tab === "manage" && canManageEvent ? (
+            <div className="dashboard-grid">
+              <section className="panel stack-lg">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">Pilotage</p>
+                    <h2>Modifier l evenement</h2>
+                  </div>
+                </div>
+
+                <form className="stack-md" onSubmit={handleEventSave}>
+                  <label className="field-block">
+                    <span>Titre</span>
+                    <input
+                      className="field-input"
+                      value={eventForm.title}
+                      onChange={(event) => handleEventFormChange("title", event.target.value)}
+                    />
+                  </label>
+
+                  <div className="grid-two">
+                    <label className="field-block">
+                      <span>Date</span>
+                      <input
+                        className="field-input"
+                        type="datetime-local"
+                        value={eventForm.event_date}
+                        onChange={(event) => handleEventFormChange("event_date", event.target.value)}
+                      />
+                    </label>
+
+                    <label className="field-block">
+                      <span>Lieu</span>
+                      <input
+                        className="field-input"
+                        value={eventForm.location}
+                        onChange={(event) => handleEventFormChange("location", event.target.value)}
+                      />
+                    </label>
+                  </div>
+
+                  <label className="field-block">
+                    <span>Description</span>
+                    <textarea
+                      className="field-input field-textarea"
+                      value={eventForm.description}
+                      onChange={(event) => handleEventFormChange("description", event.target.value)}
+                    />
+                  </label>
+
+                  <LoaderButton type="submit" loading={working}>
+                    Enregistrer les infos
+                  </LoaderButton>
+                </form>
+              </section>
+
+              <section className="panel stack-lg">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">Invitations</p>
+                    <h2>Inviter par email</h2>
+                  </div>
+                  <span className="pill pill-soft">
+                    {pendingInvitations.length} en attente
+                  </span>
+                </div>
+
+                <form className="stack-md" onSubmit={handleCreateInvitation}>
+                  <label className="field-block">
+                    <span>Email</span>
+                    <input
+                      className="field-input"
+                      type="email"
+                      value={invitationForm.email}
+                      onChange={(event) => handleInvitationFormChange("email", event.target.value)}
+                      placeholder="invite@email.fr"
+                    />
+                  </label>
+
+                  <label className="field-block">
+                    <span>Message optionnel</span>
+                    <textarea
+                      className="field-input field-textarea"
+                      value={invitationForm.message}
+                      onChange={(event) => handleInvitationFormChange("message", event.target.value)}
+                      placeholder="Ex : on commence a 19h, prends ce que tu veux boire."
+                    />
+                  </label>
+
+                  <LoaderButton type="submit" loading={working}>
+                    Preparer l invitation
+                  </LoaderButton>
+                </form>
+
+                <div className="stack-md">
+                  <h3>Suivi des invitations</h3>
+                  {invitations.length === 0 ? (
+                    <div className="empty-state">Aucune invitation envoyee pour l instant.</div>
+                  ) : (
+                    <div className="row-list">
+                      {invitations.map((invitation) => (
+                        <article key={invitation.id} className="row-card">
+                          <div>
+                            <strong>{invitation.email}</strong>
+                            <span>
+                              {formatInvitationStatus(invitation.status)} - envoyee le{" "}
+                              {formatTimestamp(invitation.invited_at)}
+                            </span>
+                            {invitation.accepted_user_name ? (
+                              <span>
+                                Acceptee par {invitation.accepted_user_name}
+                                {invitation.accepted_at ? ` le ${formatTimestamp(invitation.accepted_at)}` : ""}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="event-card-actions">
+                            {invitation.status !== "revoked" ? (
+                              <button
+                                type="button"
+                                className="btn btn-ghost"
+                                disabled={working}
+                                onClick={() => void handleRevokeInvitation(invitation.id)}
+                              >
+                                Revoquer
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() =>
+                                void copyText(buildShareLink(eventRow.share_code)).then((copied) => {
+                                  toast(copied ? "Lien copie" : "Impossible de copier le lien");
+                                })
+                              }
+                            >
+                              Copier le lien
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="panel stack-lg">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">Hote</p>
+                    <h2>Transfert du role</h2>
+                  </div>
+                </div>
+
+                {transferableMembers.length === 0 ? (
+                  <div className="empty-state">Ajoute d abord au moins un autre membre a l evenement.</div>
+                ) : (
+                  <div className="stack-md">
+                    <label className="field-block">
+                      <span>Nouveau hote</span>
+                      <select
+                        className="field-input"
+                        value={nextHostId}
+                        onChange={(event) => setNextHostId(event.target.value)}
+                      >
+                        {transferableMembers.map((member) => (
+                          <option key={member.user_id} value={member.user_id}>
+                            {member.display_name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <LoaderButton type="button" loading={working} onClick={() => void handleTransferHost()}>
+                      Transferer le role d hote
+                    </LoaderButton>
+                  </div>
+                )}
+              </section>
+
+              <section className="panel stack-lg">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">Actions rapides</p>
+                    <h2>Archiver ou dupliquer</h2>
+                  </div>
+                </div>
+
+                <div className="stack-md">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={working}
+                    onClick={() => void handleArchiveToggle()}
+                  >
+                    {isArchived ? "Reactiver l evenement" : "Archiver l evenement"}
+                  </button>
+
+                  <label className="field-block">
+                    <span>Titre de la copie</span>
+                    <input
+                      className="field-input"
+                      value={duplicateTitle}
+                      onChange={(event) => setDuplicateTitle(event.target.value)}
+                    />
+                  </label>
+
+                  <LoaderButton type="button" loading={working} onClick={() => void handleDuplicateEvent()}>
+                    Dupliquer l evenement
+                  </LoaderButton>
+                </div>
+              </section>
+            </div>
           ) : null}
 
           {tab === "activity" ? (

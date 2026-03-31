@@ -3,6 +3,7 @@ import type {
   AdminEventOverview,
   CatalogItem,
   ChoiceRow,
+  EventInvitation,
   EventSummary,
   MemberDirectoryItem,
   ShoppingAddition,
@@ -18,6 +19,50 @@ function toNumber(value: unknown) {
 
 export function normalizeInviteCode(value: string) {
   return value.trim().toUpperCase();
+}
+
+export function friendlyErrorMessage(message: string) {
+  if (message === "AUTH_REQUIRED") {
+    return "Connexion requise.";
+  }
+
+  if (message === "TITLE_TOO_SHORT") {
+    return "Le titre doit faire au moins 3 caracteres.";
+  }
+
+  if (message === "INVALID_CODE") {
+    return "Code d invitation invalide.";
+  }
+
+  if (message === "EVENT_ARCHIVED") {
+    return "Cet evenement est archive.";
+  }
+
+  if (message === "ACCESS_DENIED") {
+    return "Action non autorisee.";
+  }
+
+  if (message === "ALREADY_MEMBER") {
+    return "Cette personne fait deja partie de l evenement.";
+  }
+
+  if (message === "INVALID_EMAIL") {
+    return "Adresse email invalide.";
+  }
+
+  if (message === "TARGET_NOT_MEMBER") {
+    return "La personne choisie doit d abord rejoindre l evenement.";
+  }
+
+  if (message === "INVITATION_NOT_FOUND") {
+    return "Invitation introuvable.";
+  }
+
+  if (message === "ADMIN_REQUIRED") {
+    return "Acces reserve au super-admin.";
+  }
+
+  return message;
 }
 
 export function formatEventDate(value: string | null) {
@@ -62,6 +107,15 @@ export function buildShareLink(code: string) {
   }
 
   return `${window.location.origin}/join/${code}`;
+}
+
+export function buildMailtoLink(email: string, subject: string, body: string) {
+  const params = new URLSearchParams({
+    subject,
+    body,
+  });
+
+  return `mailto:${encodeURIComponent(email)}?${params.toString()}`;
 }
 
 export async function copyText(value: string) {
@@ -215,6 +269,14 @@ export function asAdminEventRows(data: unknown) {
   });
 }
 
+export function asInvitationRows(data: unknown) {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map((row) => row as EventInvitation);
+}
+
 export function groupTotals(rows: GroupableRow[]) {
   const grouped = new Map<string, { label: string; unit: string; quantity: number }>();
 
@@ -255,4 +317,16 @@ export function sortCatalog(items: CatalogItem[]) {
 
     return left.label.localeCompare(right.label, "fr-FR");
   });
+}
+
+export function formatInvitationStatus(status: string) {
+  if (status === "accepted") {
+    return "Acceptee";
+  }
+
+  if (status === "revoked") {
+    return "Revoquee";
+  }
+
+  return "En attente";
 }

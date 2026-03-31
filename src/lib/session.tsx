@@ -15,6 +15,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    let requestId = 0;
 
     async function readPlatformAdminFlag(nextSession: Session | null) {
       if (!nextSession?.user) {
@@ -31,9 +32,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
 
     async function applySession(nextSession: Session | null) {
+      const currentRequestId = ++requestId;
       const adminFlag = await readPlatformAdminFlag(nextSession);
 
-      if (!active) {
+      if (!active || currentRequestId !== requestId) {
         return;
       }
 

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { PENDING_JOIN_CODE_KEY } from "../lib/constants";
 import { supabase } from "../lib/supabase";
 import { useSession } from "../lib/useSession";
-import { extractUuid, normalizeInviteCode } from "../lib/utils";
+import { extractUuid, friendlyErrorMessage, normalizeInviteCode } from "../lib/utils";
 
 export default function JoinByCodePage() {
   const { code } = useParams<{ code: string }>();
@@ -48,7 +48,7 @@ export default function JoinByCodePage() {
       }
 
       if (error) {
-        setMessage(error.message);
+        setMessage(friendlyErrorMessage(error.message));
         return;
       }
 

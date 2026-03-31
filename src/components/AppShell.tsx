@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LoaderButton from "./LoaderButton";
+import { PENDING_JOIN_CODE_KEY } from "../lib/constants";
 import { useSession } from "../lib/useSession";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/toast";
@@ -32,7 +33,7 @@ export default function AppShell({ title, subtitle, actions, children }: AppShel
   async function handleSignOut() {
     setSigningOut(true);
 
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: "local" });
     setSigningOut(false);
 
     if (error) {
@@ -40,8 +41,17 @@ export default function AppShell({ title, subtitle, actions, children }: AppShel
       return;
     }
 
+    localStorage.removeItem(PENDING_JOIN_CODE_KEY);
+
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("sb-")) {
+        localStorage.removeItem(key);
+      }
+    }
+
     toast("A bientot");
     navigate("/", { replace: true });
+    window.location.assign("/");
   }
 
   return (

@@ -5,7 +5,7 @@ import LoaderButton from "../components/LoaderButton";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/toast";
 import type { AdminEventOverview } from "../lib/types";
-import { asAdminEventRows, formatEventDate, formatTimestamp } from "../lib/utils";
+import { asAdminEventRows, formatEventDate, formatTimestamp, friendlyErrorMessage } from "../lib/utils";
 
 export default function SuperAdminPage() {
   const [events, setEvents] = useState<AdminEventOverview[]>([]);
@@ -27,7 +27,7 @@ export default function SuperAdminPage() {
     setLoading(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return;
     }
 
@@ -92,6 +92,7 @@ export default function SuperAdminPage() {
                 <div className="event-card-copy">
                   <div className="event-card-topline">
                     <span className="pill">Code {event.share_code}</span>
+                    <span className="pill">{event.status === "archived" ? "Archive" : "Actif"}</span>
                     <span className="pill pill-soft">{event.member_count} membre{event.member_count > 1 ? "s" : ""}</span>
                   </div>
 

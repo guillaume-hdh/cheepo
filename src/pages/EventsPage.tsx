@@ -13,6 +13,7 @@ import {
   extractUuid,
   formatEventDate,
   formatTimestamp,
+  friendlyErrorMessage,
   normalizeInviteCode,
 } from "../lib/utils";
 
@@ -41,7 +42,8 @@ export default function EventsPage() {
 
     const { data, error } = await supabase
       .from("events")
-      .select("id,title,description,location,event_date,share_code,host_id,created_at")
+      .select("id,title,description,location,event_date,share_code,host_id,status,archived_at,created_at")
+      .order("status", { ascending: true })
       .order("event_date", { ascending: true })
       .order("created_at", { ascending: false });
 
@@ -75,7 +77,7 @@ export default function EventsPage() {
     setCreating(false);
 
     if (error) {
-      toast(error.message);
+      toast(friendlyErrorMessage(error.message));
       return;
     }
 
@@ -246,6 +248,7 @@ export default function EventsPage() {
                   <div className="event-card-copy">
                     <div className="event-card-topline">
                       <span className="pill">{isHost ? "Hote" : "Participant"}</span>
+                      {event.status === "archived" ? <span className="pill">Archive</span> : null}
                       <span className="pill pill-soft">Code {event.share_code}</span>
                     </div>
 

@@ -81,6 +81,7 @@ Le repo versionne desormais le point de depart du backend dans:
 - `supabase/migrations/0001_initial.sql`
 - `supabase/migrations/0002_roles_and_activity.sql`
 - `supabase/migrations/0003_fix_activity_trigger.sql`
+- `supabase/migrations/0004_event_management_and_invitations.sql`
 
 Le front attend notamment:
 
@@ -100,10 +101,12 @@ La V2 ajoute:
 - un role `Super-Admin` via la table `public.platform_admins`
 - un journal des modifications via `public.event_activity_log`
 - des permissions etendues pour l hote sur son evenement
+- des invitations suivies par email dans `public.event_invitations`
+- l archivage, la duplication et le transfert d hote
 
 ### Activation SQL V2
 
-1. Execute `supabase/migrations/0002_roles_and_activity.sql` puis `supabase/migrations/0003_fix_activity_trigger.sql` dans le SQL Editor du projet Supabase.
+1. Execute `supabase/migrations/0002_roles_and_activity.sql`, `supabase/migrations/0003_fix_activity_trigger.sql` puis `supabase/migrations/0004_event_management_and_invitations.sql` dans le SQL Editor du projet Supabase.
 2. Donne-toi le role Super-Admin avec ton email:
 
 ```sql
@@ -115,3 +118,14 @@ on conflict do nothing;
 ```
 
 3. Reconnecte-toi a l application pour recharger tes permissions.
+
+### V2.1
+
+La V2.1 ajoute:
+
+- un onglet `Gestion` pour l hote / le super-admin
+- l envoi d invitations via le client mail local (`mailto:`) avec suivi d etat
+- l archivage / reactivation d un evenement
+- la duplication d un evenement avec reprise de la liste de courses manuelle
+- le transfert du role d hote a un autre membre
+- une meilleure localisation du journal des modifications
