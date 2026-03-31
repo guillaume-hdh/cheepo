@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
+import DateTimeFields from "../components/DateTimeFields";
 import LoaderButton from "../components/LoaderButton";
 import { toast } from "../lib/toast";
 import { supabase } from "../lib/supabase";
@@ -9,6 +10,7 @@ import type { EventSummary } from "../lib/types";
 import {
   asEventRows,
   buildShareLink,
+  combineDateTimeInput,
   copyText,
   extractUuid,
   formatEventDate,
@@ -25,6 +27,7 @@ export default function EventsPage() {
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("19:00");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -69,7 +72,7 @@ export default function EventsPage() {
 
     const { data, error } = await supabase.rpc("create_event", {
       p_title: title.trim(),
-      p_event_date: eventDate ? new Date(eventDate).toISOString() : null,
+      p_event_date: combineDateTimeInput(eventDate, eventTime),
       p_location: location.trim() || null,
       p_description: description.trim() || null,
     });
@@ -83,6 +86,7 @@ export default function EventsPage() {
 
     setTitle("");
     setEventDate("");
+    setEventTime("19:00");
     setLocation("");
     setDescription("");
     toast("Barbecue cree");
@@ -123,7 +127,6 @@ export default function EventsPage() {
       subtitle="Cree un nouvel evenement, rejoins un barbecue existant et retrouve rapidement les invitations deja partagees."
       actions={
         <div className="hero-actions">
-          <span className="pill">Nouvelle V1</span>
           <span className="pill pill-soft">
             {events.length} evenement{events.length > 1 ? "s" : ""}
           </span>
@@ -151,27 +154,22 @@ export default function EventsPage() {
               />
             </label>
 
-            <div className="grid-two">
-              <label className="field-block">
-                <span>Date</span>
-                <input
-                  className="field-input"
-                  type="datetime-local"
-                  value={eventDate}
-                  onChange={(nextEvent) => setEventDate(nextEvent.target.value)}
-                />
-              </label>
+            <DateTimeFields
+              dateValue={eventDate}
+              timeValue={eventTime}
+              onDateChange={setEventDate}
+              onTimeChange={setEventTime}
+            />
 
-              <label className="field-block">
-                <span>Lieu</span>
-                <input
-                  className="field-input"
-                  value={location}
-                  onChange={(nextEvent) => setLocation(nextEvent.target.value)}
-                  placeholder="Terrasse, parc, jardin..."
-                />
-              </label>
-            </div>
+            <label className="field-block">
+              <span>Lieu</span>
+              <input
+                className="field-input"
+                value={location}
+                onChange={(nextEvent) => setLocation(nextEvent.target.value)}
+                placeholder="Terrasse, parc, jardin..."
+              />
+            </label>
 
             <label className="field-block">
               <span>Notes</span>

@@ -92,6 +92,41 @@ export type AdminEventOverview = {
   created_at: string;
 };
 
+export type AdminOverviewStats = {
+  total_events: number;
+  active_events: number;
+  archived_events: number;
+  total_accounts: number;
+  banned_accounts: number;
+  average_members_per_event: number;
+  pending_invitations: number;
+};
+
+export type AdminUserOverview = {
+  user_id: string;
+  email: string | null;
+  display_name: string;
+  created_at: string;
+  is_platform_admin: boolean;
+  is_banned: boolean;
+  ban_reason: string | null;
+  banned_at: string | null;
+  hosted_events: number;
+  member_events: number;
+  pending_invitations: number;
+};
+
+export type AdminUserEvent = {
+  event_id: string;
+  title: string;
+  share_code: string;
+  event_date: string | null;
+  status: EventStatus;
+  role: EventRole;
+  location: string | null;
+  joined_at: string;
+};
+
 export type EventInvitation = {
   id: string;
   event_id: string;

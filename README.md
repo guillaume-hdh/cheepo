@@ -82,6 +82,7 @@ Le repo versionne desormais le point de depart du backend dans:
 - `supabase/migrations/0002_roles_and_activity.sql`
 - `supabase/migrations/0003_fix_activity_trigger.sql`
 - `supabase/migrations/0004_event_management_and_invitations.sql`
+- `supabase/migrations/0005_super_admin_accounts_and_bans.sql`
 
 Le front attend notamment:
 
@@ -129,3 +130,28 @@ La V2.1 ajoute:
 - la duplication d un evenement avec reprise de la liste de courses manuelle
 - le transfert du role d hote a un autre membre
 - une meilleure localisation du journal des modifications
+
+### V2.2
+
+La V2.2 ajoute:
+
+- une page Auth et un accueil simplifies
+- une saisie date + heure en format 24h
+- un dashboard Super-Admin avec stats, liste des comptes et bannissement logique
+- un panneau `Details` dans le recap des repas, apports et courses pour editer au bon niveau
+- une base de bannissement propre via `public.platform_user_bans`
+
+### Activation SQL V2.2
+
+1. Execute `supabase/migrations/0005_super_admin_accounts_and_bans.sql` dans le SQL Editor du projet Supabase.
+2. Reconnecte-toi a l application.
+
+### Email serveur
+
+Le repo prepare encore les invitations via `mailto:`. Pour brancher un vrai envoi serveur plus tard, il faudra fournir les informations SMTP du compte Hostinger:
+
+- hote SMTP
+- port
+- identifiant
+- mot de passe
+- adresse d envoi souhaitée

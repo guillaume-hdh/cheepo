@@ -11,6 +11,7 @@ type AppShellProps = {
   subtitle?: string;
   actions?: ReactNode;
   children: ReactNode;
+  tone?: "default" | "admin";
 };
 
 function displayName(email: string | null, metadataName: unknown) {
@@ -25,7 +26,13 @@ function displayName(email: string | null, metadataName: unknown) {
   return email.split("@")[0];
 }
 
-export default function AppShell({ title, subtitle, actions, children }: AppShellProps) {
+export default function AppShell({
+  title,
+  subtitle,
+  actions,
+  children,
+  tone = "default",
+}: AppShellProps) {
   const navigate = useNavigate();
   const { user, isPlatformAdmin } = useSession();
   const [signingOut, setSigningOut] = useState(false);
@@ -55,7 +62,7 @@ export default function AppShell({ title, subtitle, actions, children }: AppShel
   }
 
   return (
-    <div className="app-shell">
+    <div className={tone === "admin" ? "app-shell app-shell-admin" : "app-shell"}>
       <div className="ambient ambient-a" />
       <div className="ambient ambient-b" />
 

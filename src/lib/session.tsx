@@ -4,8 +4,10 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { PENDING_JOIN_CODE_KEY } from "./constants";
 import { supabase } from "./supabase";
 import { SessionContext } from "./session-context";
+import { toast } from "./toast";
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -17,31 +19,73 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let active = true;
     let requestId = 0;
 
-    async function readPlatformAdminFlag(nextSession: Session | null) {
+    async function readSessionFlags(nextSession: Session | null) {
       if (!nextSession?.user) {
-        return false;
+        return {
+          isPlatformAdmin: false,
+          isBanned: false,
+        };
       }
 
-      const { data, error } = await supabase.rpc("is_platform_admin", {});
+      const { data, error } = await supabase.rpc("get_session_flags", {});
 
       if (error) {
-        return false;
+        return {
+          isPlatformAdmin: false,
+          isBanned: false,
+        };
       }
 
-      return Boolean(data);
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row || typeof row !== "object") {
+        return {
+          isPlatformAdmin: false,
+          isBanned: false,
+        };
+      }
+
+      const flags = row as { is_platform_admin?: unknown; is_banned?: unknown };
+
+      return {
+        isPlatformAdmin: Boolean(flags.is_platform_admin),
+        isBanned: Boolean(flags.is_banned),
+      };
     }
 
     async function applySession(nextSession: Session | null) {
       const currentRequestId = ++requestId;
-      const adminFlag = await readPlatformAdminFlag(nextSession);
+      const flags = await readSessionFlags(nextSession);
 
       if (!active || currentRequestId !== requestId) {
         return;
       }
 
+      if (flags.isBanned) {
+        localStorage.removeItem(PENDING_JOIN_CODE_KEY);
+
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith("sb-")) {
+            localStorage.removeItem(key);
+          }
+        }
+
+        await supabase.auth.signOut({ scope: "local" });
+
+        if (!active || currentRequestId !== requestId) {
+          return;
+        }
+
+        setSession(null);
+        setUser(null);
+        setIsPlatformAdmin(false);
+        setLoading(false);
+        toast("Compte suspendu. Contacte l equipe Cheepo.");
+        return;
+      }
+
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
-      setIsPlatformAdmin(adminFlag);
+      setIsPlatformAdmin(flags.isPlatformAdmin);
       setLoading(false);
     }
 

@@ -1,6 +1,9 @@
 import type {
   ActivityLogRow,
+  AdminOverviewStats,
   AdminEventOverview,
+  AdminUserEvent,
+  AdminUserOverview,
   CatalogItem,
   ChoiceRow,
   EventInvitation,
@@ -15,6 +18,18 @@ type GroupableRow = Pick<ChoiceRow, "label" | "unit" | "quantity">;
 function toNumber(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toBoolean(value: unknown) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return value === "true";
+  }
+
+  return Boolean(value);
 }
 
 export function normalizeInviteCode(value: string) {
@@ -62,6 +77,22 @@ export function friendlyErrorMessage(message: string) {
     return "Acces reserve au super-admin.";
   }
 
+  if (message === "USER_BANNED") {
+    return "Ce compte est suspendu.";
+  }
+
+  if (message === "EVENT_NOT_FOUND") {
+    return "Evenement introuvable.";
+  }
+
+  if (message === "ACCOUNT_NOT_FOUND") {
+    return "Compte introuvable.";
+  }
+
+  if (message === "CANNOT_BAN_SELF") {
+    return "Tu ne peux pas te bannir toi-meme.";
+  }
+
   return message;
 }
 
@@ -70,11 +101,14 @@ export function formatEventDate(value: string | null) {
     return "Date a definir";
   }
 
-  return new Date(value).toLocaleDateString("fr-FR", {
+  return new Date(value).toLocaleString("fr-FR", {
     weekday: "short",
     day: "2-digit",
     month: "short",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -84,6 +118,7 @@ export function formatTimestamp(value: string) {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -110,12 +145,41 @@ export function buildShareLink(code: string) {
 }
 
 export function buildMailtoLink(email: string, subject: string, body: string) {
-  const params = new URLSearchParams({
-    subject,
-    body,
-  });
+  return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
-  return `mailto:${encodeURIComponent(email)}?${params.toString()}`;
+export function splitDateTimeInput(value: string | null, fallbackTime = "19:00") {
+  if (!value) {
+    return {
+      date: "",
+      time: fallbackTime,
+    };
+  }
+
+  const parsed = new Date(value);
+  const offset = parsed.getTimezoneOffset();
+  const localDate = new Date(parsed.getTime() - offset * 60_000);
+  const localValue = localDate.toISOString();
+
+  return {
+    date: localValue.slice(0, 10),
+    time: localValue.slice(11, 16),
+  };
+}
+
+export function combineDateTimeInput(date: string, time: string) {
+  if (!date) {
+    return null;
+  }
+
+  const safeTime = time || "19:00";
+  const parsed = new Date(`${date}T${safeTime}:00`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString();
 }
 
 export async function copyText(value: string) {
@@ -267,6 +331,53 @@ export function asAdminEventRows(data: unknown) {
       member_count: toNumber(eventRow.member_count),
     };
   });
+}
+
+export function asAdminOverviewStats(data: unknown): AdminOverviewStats | null {
+  const row = Array.isArray(data) ? data[0] : data;
+
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+
+  const stats = row as AdminOverviewStats;
+
+  return {
+    total_events: toNumber(stats.total_events),
+    active_events: toNumber(stats.active_events),
+    archived_events: toNumber(stats.archived_events),
+    total_accounts: toNumber(stats.total_accounts),
+    banned_accounts: toNumber(stats.banned_accounts),
+    average_members_per_event: toNumber(stats.average_members_per_event),
+    pending_invitations: toNumber(stats.pending_invitations),
+  };
+}
+
+export function asAdminUserRows(data: unknown) {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map((row) => {
+    const account = row as AdminUserOverview;
+
+    return {
+      ...account,
+      is_platform_admin: toBoolean(account.is_platform_admin),
+      is_banned: toBoolean(account.is_banned),
+      hosted_events: toNumber(account.hosted_events),
+      member_events: toNumber(account.member_events),
+      pending_invitations: toNumber(account.pending_invitations),
+    };
+  });
+}
+
+export function asAdminUserEventRows(data: unknown) {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map((row) => row as AdminUserEvent);
 }
 
 export function asInvitationRows(data: unknown) {

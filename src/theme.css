@@ -7,6 +7,52 @@
   overflow: hidden;
 }
 
+.app-shell-admin {
+  background:
+    radial-gradient(circle at top left, rgb(99 102 241 / 0.12), transparent 34rem),
+    linear-gradient(180deg, #1f2530 0%, #2a313d 100%);
+}
+
+.app-shell-admin .hero-copy,
+.app-shell-admin .meta-copy,
+.app-shell-admin .event-card p,
+.app-shell-admin .callout,
+.app-shell-admin .empty-state,
+.app-shell-admin .row-card span,
+.app-shell-admin .member-card span,
+.app-shell-admin .meta-grid dt {
+  color: #a7b4c6;
+}
+
+.app-shell-admin .brand-mark,
+.app-shell-admin h1,
+.app-shell-admin h2,
+.app-shell-admin h3,
+.app-shell-admin .meta-grid dd,
+.app-shell-admin .pill,
+.app-shell-admin .user-chip,
+.app-shell-admin .btn-secondary,
+.app-shell-admin .btn-ghost {
+  color: #f5f7fb;
+}
+
+.app-shell-admin .panel,
+.app-shell-admin .hero-card,
+.app-shell-admin .event-card,
+.app-shell-admin .row-card,
+.app-shell-admin .stat-panel,
+.app-shell-admin .admin-user-card,
+.app-shell-admin .detail-card,
+.app-shell-admin .callout,
+.app-shell-admin .empty-state,
+.app-shell-admin .pill,
+.app-shell-admin .user-chip,
+.app-shell-admin .btn-secondary,
+.app-shell-admin .btn-ghost {
+  background: rgb(23 28 36 / 0.78);
+  border-color: rgb(68 80 97 / 0.95);
+}
+
 .ambient {
   position: absolute;
   border-radius: 999px;
@@ -233,7 +279,9 @@ h3 {
 .member-list,
 .meta-grid,
 .grid-two,
-.grid-three {
+.grid-three,
+.stats-grid,
+.account-grid {
   display: grid;
   gap: 0.9rem;
 }
@@ -251,9 +299,24 @@ h3 {
   grid-template-columns: 1fr;
 }
 
+.grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stats-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.account-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .stat-card,
 .feature-card,
-.member-card {
+.member-card,
+.stat-panel,
+.admin-user-card,
+.detail-card {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -430,6 +493,26 @@ h3 {
   gap: 0.55rem;
 }
 
+.detail-card {
+  gap: 1rem;
+}
+
+.detail-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.stat-panel strong {
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.admin-user-card {
+  gap: 1rem;
+}
+
 .event-card-topline {
   display: flex;
   gap: 0.55rem;
@@ -491,7 +574,9 @@ code {
   .landing-grid,
   .auth-grid,
   .dashboard-grid,
-  .overview-grid {
+  .overview-grid,
+  .account-grid,
+  .stats-grid {
     grid-template-columns: 1fr;
   }
 

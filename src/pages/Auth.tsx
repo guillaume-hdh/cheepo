@@ -94,27 +94,12 @@ export default function Auth() {
 
       <div className="auth-grid">
         <section className="hero-card">
-          <p className="eyebrow">Nouvelle base propre</p>
-          <h1>Reconnecte-toi et on repart sur une V1 saine.</h1>
+          <p className="eyebrow">Connexion</p>
+          <h1>Entre dans Cheepo.</h1>
           <p className="hero-copy">
-            Cheepo te permet de creer un barbecue, partager un lien d invitation, savoir
-            ce que chacun mange, ce que chacun apporte et ce qu il reste a acheter.
+            Cree un compte ou reconnecte-toi pour gerer tes evenements, tes invites
+            et les contributions de chacun.
           </p>
-
-          <div className="feature-list">
-            <div className="feature-card">
-              <strong>Evenements partages</strong>
-              <span>Un code, un lien, et tout le monde rejoint le meme barbecue.</span>
-            </div>
-            <div className="feature-card">
-              <strong>Organisation claire</strong>
-              <span>Repas, contributions et courses restent synchronises.</span>
-            </div>
-            <div className="feature-card">
-              <strong>Base versionnee</strong>
-              <span>Le schema Supabase repart dans le repo, plus hors controle.</span>
-            </div>
-          </div>
         </section>
 
         <section className="panel auth-panel stack-lg">

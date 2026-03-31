@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetSt
 import { Link, useParams } from "react-router-dom";
 import ActivityTimeline from "../components/ActivityTimeline";
 import AppShell from "../components/AppShell";
-import EditableChoiceManager, { type ChoiceDraft } from "../components/EditableChoiceManager";
-import EditableShoppingManager, {
+import DateTimeFields from "../components/DateTimeFields";
+import EventItemDetailsPanel, {
+  type ChoiceDraft,
   type ShoppingDraft,
-} from "../components/EditableShoppingManager";
+} from "../components/EventItemDetailsPanel";
 import LoaderButton from "../components/LoaderButton";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/toast";
@@ -32,6 +33,7 @@ import {
   asShoppingAdditions,
   buildMailtoLink,
   buildShareLink,
+  combineDateTimeInput,
   copyText,
   formatEventDate,
   formatInvitationStatus,
@@ -40,6 +42,7 @@ import {
   friendlyErrorMessage,
   groupTotals,
   quantityStepForUnit,
+  splitDateTimeInput,
   sortCatalog,
 } from "../lib/utils";
 
@@ -62,6 +65,7 @@ type EventFormState = {
   description: string;
   location: string;
   event_date: string;
+  event_time: string;
 };
 
 type InvitationFormState = {
@@ -89,15 +93,14 @@ function readErrorMessage(error: unknown) {
   return "Une erreur est survenue.";
 }
 
-function toDatetimeLocalValue(value: string | null) {
-  if (!value) {
-    return "";
-  }
+type DetailSelection = {
+  tab: "eat" | "bring" | "shop";
+  label: string;
+  unit: string;
+};
 
-  const parsed = new Date(value);
-  const offset = parsed.getTimezoneOffset();
-  const localDate = new Date(parsed.getTime() - offset * 60_000);
-  return localDate.toISOString().slice(0, 16);
+function aggregateKey(label: string, unit: string) {
+  return `${label.trim().toLowerCase()}__${unit.trim().toLowerCase()}`;
 }
 
 function formatRole(role: EventRole) {
@@ -214,6 +217,7 @@ export default function EventDetailPage() {
     description: "",
     location: "",
     event_date: "",
+    event_time: "19:00",
   });
   const [invitationForm, setInvitationForm] = useState<InvitationFormState>({
     email: "",
@@ -237,6 +241,7 @@ export default function EventDetailPage() {
   const [eatDrafts, setEatDrafts] = useState<Record<string, ChoiceDraft>>({});
   const [bringDrafts, setBringDrafts] = useState<Record<string, ChoiceDraft>>({});
   const [shoppingDrafts, setShoppingDrafts] = useState<Record<string, ShoppingDraft>>({});
+  const [selectedDetail, setSelectedDetail] = useState<DetailSelection | null>(null);
 
   useEffect(() => {
     if (!eventId) {
@@ -288,11 +293,14 @@ export default function EventDetailPage() {
       return;
     }
 
+    const nextDateTime = splitDateTimeInput(eventRow.event_date);
+
     setEventForm({
       title: eventRow.title,
       description: eventRow.description ?? "",
       location: eventRow.location ?? "",
-      event_date: toDatetimeLocalValue(eventRow.event_date),
+      event_date: nextDateTime.date,
+      event_time: nextDateTime.time,
     });
     setDuplicateTitle(`${eventRow.title} (copie)`);
   }, [eventRow]);
@@ -387,6 +395,33 @@ export default function EventDetailPage() {
   const pendingInvitations = useMemo(
     () => invitations.filter((invitation) => invitation.status === "pending"),
     [invitations],
+  );
+  const selectedEatRows = useMemo(
+    () =>
+      selectedDetail?.tab === "eat"
+        ? eatSelections.filter(
+            (row) => aggregateKey(row.label, row.unit) === aggregateKey(selectedDetail.label, selectedDetail.unit),
+          )
+        : [],
+    [eatSelections, selectedDetail],
+  );
+  const selectedBringRows = useMemo(
+    () =>
+      selectedDetail?.tab === "bring"
+        ? bringItems.filter(
+            (row) => aggregateKey(row.label, row.unit) === aggregateKey(selectedDetail.label, selectedDetail.unit),
+          )
+        : [],
+    [bringItems, selectedDetail],
+  );
+  const selectedShoppingRows = useMemo(
+    () =>
+      selectedDetail?.tab === "shop"
+        ? shoppingAdditions.filter(
+            (row) => aggregateKey(row.label, row.unit) === aggregateKey(selectedDetail.label, selectedDetail.unit),
+          )
+        : [],
+    [selectedDetail, shoppingAdditions],
   );
 
   function renderCatalogOptions() {
@@ -644,7 +679,7 @@ export default function EventDetailPage() {
         title: eventForm.title.trim(),
         description: eventForm.description.trim() || null,
         location: eventForm.location.trim() || null,
-        event_date: eventForm.event_date ? new Date(eventForm.event_date).toISOString() : null,
+        event_date: combineDateTimeInput(eventForm.event_date, eventForm.event_time),
       })
       .eq("id", eventId);
 
@@ -932,6 +967,24 @@ export default function EventDetailPage() {
     }
 
     toast("Lien d invitation copie");
+  }
+
+  function handleToggleDetail(tabName: DetailSelection["tab"], label: string, unit: string) {
+    setSelectedDetail((current) => {
+      if (
+        current &&
+        current.tab === tabName &&
+        aggregateKey(current.label, current.unit) === aggregateKey(label, unit)
+      ) {
+        return null;
+      }
+
+      return {
+        tab: tabName,
+        label,
+        unit,
+      };
+    });
   }
 
   if (!eventId) {
@@ -1230,31 +1283,45 @@ export default function EventDetailPage() {
                               {formatQuantity(row.quantity)} {row.unit}
                             </span>
                           </div>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => handleToggleDetail("eat", row.label, row.unit)}
+                          >
+                            {selectedDetail?.tab === "eat" &&
+                            aggregateKey(selectedDetail.label, selectedDetail.unit) === aggregateKey(row.label, row.unit)
+                              ? "Masquer"
+                              : "Details"}
+                          </button>
                         </article>
                       ))}
                     </div>
                   )}
                 </div>
+
+                {selectedDetail?.tab === "eat" ? (
+                  <EventItemDetailsPanel
+                    mode="choice"
+                    title="Lignes repas"
+                    itemLabel={selectedDetail.label}
+                    itemUnit={selectedDetail.unit}
+                    rows={selectedEatRows}
+                    ownerLabels={memberNames}
+                    currentUserId={user?.id}
+                    canManageAll={canManageEvent}
+                    drafts={eatDrafts}
+                    loading={working}
+                    onDraftChange={(rowId, field, value) =>
+                      handleChoiceDraftChange(setEatDrafts, rowId, field, value)
+                    }
+                    onSave={async (rowId) =>
+                      handleChoiceUpdate("eat_selections", rowId, eatDrafts[rowId])
+                    }
+                    onDelete={async (rowId) => handleDeleteChoice("eat_selections", rowId)}
+                  />
+                ) : null}
                 </section>
               </div>
-
-              {canManageEvent ? (
-                <EditableChoiceManager
-                  title="Tous les repas de l evenement"
-                  emptyMessage="Aucune ligne repas a corriger."
-                  rows={eatSelections}
-                  ownerLabels={memberNames}
-                  drafts={eatDrafts}
-                  loading={working}
-                  onDraftChange={(rowId, field, value) =>
-                    handleChoiceDraftChange(setEatDrafts, rowId, field, value)
-                  }
-                  onSave={async (rowId) =>
-                    handleChoiceUpdate("eat_selections", rowId, eatDrafts[rowId])
-                  }
-                  onDelete={async (rowId) => handleDeleteChoice("eat_selections", rowId)}
-                />
-              ) : null}
             </>
           ) : null}
 
@@ -1406,31 +1473,45 @@ export default function EventDetailPage() {
                               {formatQuantity(row.quantity)} {row.unit}
                             </span>
                           </div>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => handleToggleDetail("bring", row.label, row.unit)}
+                          >
+                            {selectedDetail?.tab === "bring" &&
+                            aggregateKey(selectedDetail.label, selectedDetail.unit) === aggregateKey(row.label, row.unit)
+                              ? "Masquer"
+                              : "Details"}
+                          </button>
                         </article>
                       ))}
                     </div>
                   )}
                 </div>
+
+                {selectedDetail?.tab === "bring" ? (
+                  <EventItemDetailsPanel
+                    mode="choice"
+                    title="Lignes apports"
+                    itemLabel={selectedDetail.label}
+                    itemUnit={selectedDetail.unit}
+                    rows={selectedBringRows}
+                    ownerLabels={memberNames}
+                    currentUserId={user?.id}
+                    canManageAll={canManageEvent}
+                    drafts={bringDrafts}
+                    loading={working}
+                    onDraftChange={(rowId, field, value) =>
+                      handleChoiceDraftChange(setBringDrafts, rowId, field, value)
+                    }
+                    onSave={async (rowId) =>
+                      handleChoiceUpdate("bring_items", rowId, bringDrafts[rowId])
+                    }
+                    onDelete={async (rowId) => handleDeleteChoice("bring_items", rowId)}
+                  />
+                ) : null}
                 </section>
               </div>
-
-              {canManageEvent ? (
-                <EditableChoiceManager
-                  title="Tous les apports de l evenement"
-                  emptyMessage="Aucune ligne apport a corriger."
-                  rows={bringItems}
-                  ownerLabels={memberNames}
-                  drafts={bringDrafts}
-                  loading={working}
-                  onDraftChange={(rowId, field, value) =>
-                    handleChoiceDraftChange(setBringDrafts, rowId, field, value)
-                  }
-                  onSave={async (rowId) =>
-                    handleChoiceUpdate("bring_items", rowId, bringDrafts[rowId])
-                  }
-                  onDelete={async (rowId) => handleDeleteChoice("bring_items", rowId)}
-                />
-              ) : null}
             </>
           ) : null}
 
@@ -1458,13 +1539,25 @@ export default function EventDetailPage() {
                             {formatQuantity(row.needed)} - promis {formatQuantity(row.brought)}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => handleTakeRemaining(row)}
-                        >
-                          Je m en charge
-                        </button>
+                        <div className="event-card-actions">
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => handleToggleDetail("shop", row.label, row.unit)}
+                          >
+                            {selectedDetail?.tab === "shop" &&
+                            aggregateKey(selectedDetail.label, selectedDetail.unit) === aggregateKey(row.label, row.unit)
+                              ? "Masquer"
+                              : "Details"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => handleTakeRemaining(row)}
+                          >
+                            Je m en charge
+                          </button>
+                        </div>
                       </article>
                     ))}
                   </div>
@@ -1552,20 +1645,26 @@ export default function EventDetailPage() {
                     </div>
                   )}
                 </div>
+
+                {selectedDetail?.tab === "shop" ? (
+                  <EventItemDetailsPanel
+                    mode="shopping"
+                    title="Lignes courses"
+                    itemLabel={selectedDetail.label}
+                    itemUnit={selectedDetail.unit}
+                    rows={selectedShoppingRows}
+                    ownerLabels={memberNames}
+                    currentUserId={user?.id}
+                    canManageAll={canManageEvent}
+                    drafts={shoppingDrafts}
+                    loading={working}
+                    onDraftChange={handleShoppingDraftChange}
+                    onSave={async (rowId) => handleShoppingUpdate(rowId, shoppingDrafts[rowId])}
+                    onDelete={async (rowId) => handleDeleteShopping(rowId)}
+                  />
+                ) : null}
                 </section>
               </div>
-
-              {canManageEvent ? (
-                <EditableShoppingManager
-                  rows={shoppingAdditions}
-                  ownerLabels={memberNames}
-                  drafts={shoppingDrafts}
-                  loading={working}
-                  onDraftChange={handleShoppingDraftChange}
-                  onSave={async (rowId) => handleShoppingUpdate(rowId, shoppingDrafts[rowId])}
-                  onDelete={async (rowId) => handleDeleteShopping(rowId)}
-                />
-              ) : null}
             </>
           ) : null}
 
@@ -1589,26 +1688,21 @@ export default function EventDetailPage() {
                     />
                   </label>
 
-                  <div className="grid-two">
-                    <label className="field-block">
-                      <span>Date</span>
-                      <input
-                        className="field-input"
-                        type="datetime-local"
-                        value={eventForm.event_date}
-                        onChange={(event) => handleEventFormChange("event_date", event.target.value)}
-                      />
-                    </label>
+                  <DateTimeFields
+                    dateValue={eventForm.event_date}
+                    timeValue={eventForm.event_time}
+                    onDateChange={(value) => handleEventFormChange("event_date", value)}
+                    onTimeChange={(value) => handleEventFormChange("event_time", value)}
+                  />
 
-                    <label className="field-block">
-                      <span>Lieu</span>
-                      <input
-                        className="field-input"
-                        value={eventForm.location}
-                        onChange={(event) => handleEventFormChange("location", event.target.value)}
-                      />
-                    </label>
-                  </div>
+                  <label className="field-block">
+                    <span>Lieu</span>
+                    <input
+                      className="field-input"
+                      value={eventForm.location}
+                      onChange={(event) => handleEventFormChange("location", event.target.value)}
+                    />
+                  </label>
 
                   <label className="field-block">
                     <span>Description</span>
