@@ -1,4 +1,5 @@
 import LoaderButton from "./LoaderButton";
+import Avatar from "./Avatar";
 import type { ChoiceRow, ShoppingAddition } from "../lib/types";
 import { formatQuantity, formatTimestamp } from "../lib/utils";
 
@@ -19,6 +20,7 @@ type BaseProps = {
   itemLabel: string;
   itemUnit: string;
   ownerLabels: Map<string, string>;
+  ownerAvatars: Map<string, string | null>;
   currentUserId?: string;
   canManageAll: boolean;
   loading: boolean;
@@ -45,7 +47,16 @@ type ShoppingDetailsProps = BaseProps & {
 type EventItemDetailsPanelProps = ChoiceDetailsProps | ShoppingDetailsProps;
 
 export default function EventItemDetailsPanel(props: EventItemDetailsPanelProps) {
-  const { title, itemLabel, itemUnit, ownerLabels, currentUserId, canManageAll, loading } = props;
+  const {
+    title,
+    itemLabel,
+    itemUnit,
+    ownerLabels,
+    ownerAvatars,
+    currentUserId,
+    canManageAll,
+    loading,
+  } = props;
 
   return (
     <section className="panel stack-lg">
@@ -86,9 +97,17 @@ export default function EventItemDetailsPanel(props: EventItemDetailsPanelProps)
             return (
               <article key={row.id} className="detail-card">
                 <div className="detail-card-header">
-                  <div className="stack-md">
-                    <strong>{ownerName}</strong>
-                    <span>Ajoute le {formatTimestamp(row.created_at)}</span>
+                  <div className="member-card-header">
+                    <Avatar
+                      userId={ownerId}
+                      displayName={ownerName}
+                      avatarPath={ownerAvatars.get(ownerId) ?? null}
+                      size="sm"
+                    />
+                    <div className="stack-md">
+                      <strong>{ownerName}</strong>
+                      <span>Ajoute le {formatTimestamp(row.created_at)}</span>
+                    </div>
                   </div>
 
                   <span className="pill">

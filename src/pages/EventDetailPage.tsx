@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetSt
 import { Link, useParams } from "react-router-dom";
 import ActivityTimeline from "../components/ActivityTimeline";
 import AppShell from "../components/AppShell";
+import ArchivedEventNotice from "../components/ArchivedEventNotice";
+import Avatar from "../components/Avatar";
 import DateTimeFields from "../components/DateTimeFields";
 import EventItemDetailsPanel, {
   type ChoiceDraft,
@@ -377,6 +379,10 @@ export default function EventDetailPage() {
       ),
     [members],
   );
+  const memberAvatars = useMemo(
+    () => new Map(members.map((member) => [member.user_id, member.avatar_path])),
+    [members],
+  );
   const eatCatalogUnit = useMemo(
     () => catalogOptions.find((item) => item.id === eatCatalogId)?.unit ?? "portion",
     [catalogOptions, eatCatalogId],
@@ -388,6 +394,7 @@ export default function EventDetailPage() {
   const isHost = eventRow?.host_id === user?.id;
   const isArchived = eventRow?.status === "archived";
   const canManageEvent = Boolean(user && (isPlatformAdmin || isHost));
+  const canEditActiveEvent = canManageEvent && !isArchived;
   const transferableMembers = useMemo(
     () => members.filter((member) => member.role !== "host"),
     [members],
@@ -478,6 +485,11 @@ export default function EventDetailPage() {
   ) {
     if (!eventId || !user) {
       toast("Session introuvable");
+      return false;
+    }
+
+    if (isArchived) {
+      toast("Cet evenement est archive.");
       return false;
     }
 
@@ -591,6 +603,11 @@ export default function EventDetailPage() {
   }
 
   async function handleDeleteChoice(table: "eat_selections" | "bring_items", choiceId: string) {
+    if (isArchived) {
+      toast("Cet evenement est archive.");
+      return;
+    }
+
     setWorking(true);
     const { error } = await supabase.from(table).delete().eq("id", choiceId);
     setWorking(false);
@@ -608,6 +625,11 @@ export default function EventDetailPage() {
 
     if (!eventId || !user) {
       toast("Session introuvable");
+      return;
+    }
+
+    if (isArchived) {
+      toast("Cet evenement est archive.");
       return;
     }
 
@@ -640,6 +662,11 @@ export default function EventDetailPage() {
   }
 
   async function handleDeleteShopping(additionId: string) {
+    if (isArchived) {
+      toast("Cet evenement est archive.");
+      return;
+    }
+
     setWorking(true);
     const { error } = await supabase.from("shopping_additions").delete().eq("id", additionId);
     setWorking(false);
@@ -663,6 +690,11 @@ export default function EventDetailPage() {
     formEvent.preventDefault();
 
     if (!eventId || !canManageEvent) {
+      return;
+    }
+
+    if (isArchived) {
+      toast("Cet evenement est archive.");
       return;
     }
 
@@ -699,6 +731,11 @@ export default function EventDetailPage() {
       return;
     }
 
+    if (isArchived) {
+      toast("Cet evenement est archive.");
+      return;
+    }
+
     setWorking(true);
 
     const { error } = await supabase
@@ -729,6 +766,11 @@ export default function EventDetailPage() {
     formEvent.preventDefault();
 
     if (!eventId || !eventRow || !canManageEvent) {
+      return;
+    }
+
+    if (isArchived) {
+      toast("Cet evenement est archive.");
       return;
     }
 
@@ -770,6 +812,11 @@ export default function EventDetailPage() {
   }
 
   async function handleRevokeInvitation(invitationId: string) {
+    if (isArchived) {
+      toast("Cet evenement est archive.");
+      return;
+    }
+
     setWorking(true);
 
     const { error } = await supabase.rpc("revoke_event_invitation", {
@@ -845,6 +892,11 @@ export default function EventDetailPage() {
       return;
     }
 
+    if (isArchived) {
+      toast("Cet evenement est archive.");
+      return;
+    }
+
     setWorking(true);
 
     const { error } = await supabase.rpc("transfer_event_host", {
@@ -897,6 +949,11 @@ export default function EventDetailPage() {
       return;
     }
 
+    if (isArchived) {
+      toast("Cet evenement est archive.");
+      return;
+    }
+
     setWorking(true);
 
     const { error } = await supabase
@@ -924,6 +981,11 @@ export default function EventDetailPage() {
       return;
     }
 
+    if (isArchived) {
+      toast("Cet evenement est archive.");
+      return;
+    }
+
     setWorking(true);
 
     const { error } = await supabase
@@ -947,6 +1009,11 @@ export default function EventDetailPage() {
   }
 
   function handleTakeRemaining(row: ShoppingRemainingRow) {
+    if (isArchived) {
+      toast("Cet evenement est archive.");
+      return;
+    }
+
     setTab("bring");
     setBringCatalogId("");
     setBringCustomLabel(row.label);
@@ -1074,15 +1141,26 @@ export default function EventDetailPage() {
                 ) : (
                   members.map((member) => (
                     <article key={member.user_id} className="member-card">
-                      <strong>{member.display_name}</strong>
-                      <span>
-                        {formatRole(member.role)}{member.email ? ` - ${member.email}` : ""}
-                      </span>
+                      <div className="member-card-header">
+                        <Avatar
+                          userId={member.user_id}
+                          displayName={member.display_name}
+                          email={member.email}
+                          avatarPath={member.avatar_path}
+                          size="sm"
+                        />
+                        <div className="stack-md">
+                          <strong>{member.display_name}</strong>
+                          <span>
+                            {formatRole(member.role)}{member.email ? ` - ${member.email}` : ""}
+                          </span>
+                        </div>
+                      </div>
                       {canManageEvent && member.role !== "host" ? (
                         <button
                           type="button"
                           className="btn btn-ghost"
-                          disabled={working}
+                          disabled={working || isArchived}
                           onClick={() => void handleRemoveMember(member.user_id)}
                         >
                           Retirer
@@ -1094,6 +1172,8 @@ export default function EventDetailPage() {
               </div>
             </section>
           </div>
+
+          {isArchived ? <ArchivedEventNotice /> : null}
 
           <div className="tab-row">
             <button
@@ -1179,7 +1259,7 @@ export default function EventDetailPage() {
                     </div>
                   </div>
 
-                  <LoaderButton type="submit" loading={working} disabled={!eatCatalogId}>
+                  <LoaderButton type="submit" loading={working} disabled={!eatCatalogId || isArchived}>
                     Ajouter depuis le catalogue
                   </LoaderButton>
                 </form>
@@ -1227,7 +1307,7 @@ export default function EventDetailPage() {
                     </label>
                   </div>
 
-                  <LoaderButton type="submit" tone="secondary" loading={working}>
+                  <LoaderButton type="submit" tone="secondary" loading={working} disabled={isArchived}>
                     Ajouter librement
                   </LoaderButton>
                 </form>
@@ -1258,7 +1338,7 @@ export default function EventDetailPage() {
                           <button
                             type="button"
                             className="btn btn-ghost"
-                            disabled={working}
+                            disabled={working || isArchived}
                             onClick={() => void handleDeleteChoice("eat_selections", row.id)}
                           >
                             Supprimer
@@ -1307,8 +1387,9 @@ export default function EventDetailPage() {
                     itemUnit={selectedDetail.unit}
                     rows={selectedEatRows}
                     ownerLabels={memberNames}
-                    currentUserId={user?.id}
-                    canManageAll={canManageEvent}
+                    ownerAvatars={memberAvatars}
+                    canManageAll={canEditActiveEvent}
+                    currentUserId={isArchived ? undefined : user?.id}
                     drafts={eatDrafts}
                     loading={working}
                     onDraftChange={(rowId, field, value) =>
@@ -1369,7 +1450,7 @@ export default function EventDetailPage() {
                     </div>
                   </div>
 
-                  <LoaderButton type="submit" loading={working} disabled={!bringCatalogId}>
+                  <LoaderButton type="submit" loading={working} disabled={!bringCatalogId || isArchived}>
                     Je ramene cet article
                   </LoaderButton>
                 </form>
@@ -1417,7 +1498,7 @@ export default function EventDetailPage() {
                     </label>
                   </div>
 
-                  <LoaderButton type="submit" tone="secondary" loading={working}>
+                  <LoaderButton type="submit" tone="secondary" loading={working} disabled={isArchived}>
                     Ajouter ma contribution
                   </LoaderButton>
                 </form>
@@ -1448,7 +1529,7 @@ export default function EventDetailPage() {
                           <button
                             type="button"
                             className="btn btn-ghost"
-                            disabled={working}
+                            disabled={working || isArchived}
                             onClick={() => void handleDeleteChoice("bring_items", row.id)}
                           >
                             Supprimer
@@ -1497,8 +1578,9 @@ export default function EventDetailPage() {
                     itemUnit={selectedDetail.unit}
                     rows={selectedBringRows}
                     ownerLabels={memberNames}
-                    currentUserId={user?.id}
-                    canManageAll={canManageEvent}
+                    ownerAvatars={memberAvatars}
+                    currentUserId={isArchived ? undefined : user?.id}
+                    canManageAll={canEditActiveEvent}
                     drafts={bringDrafts}
                     loading={working}
                     onDraftChange={(rowId, field, value) =>
@@ -1613,7 +1695,7 @@ export default function EventDetailPage() {
                     </label>
                   </div>
 
-                  <LoaderButton type="submit" loading={working}>
+                  <LoaderButton type="submit" loading={working} disabled={isArchived}>
                     Ajouter a la liste
                   </LoaderButton>
                 </form>
@@ -1635,7 +1717,7 @@ export default function EventDetailPage() {
                           <button
                             type="button"
                             className="btn btn-ghost"
-                            disabled={working}
+                            disabled={working || isArchived}
                             onClick={() => void handleDeleteShopping(row.id)}
                           >
                             Supprimer
@@ -1654,8 +1736,9 @@ export default function EventDetailPage() {
                     itemUnit={selectedDetail.unit}
                     rows={selectedShoppingRows}
                     ownerLabels={memberNames}
-                    currentUserId={user?.id}
-                    canManageAll={canManageEvent}
+                    ownerAvatars={memberAvatars}
+                    currentUserId={isArchived ? undefined : user?.id}
+                    canManageAll={canEditActiveEvent}
                     drafts={shoppingDrafts}
                     loading={working}
                     onDraftChange={handleShoppingDraftChange}
@@ -1713,7 +1796,7 @@ export default function EventDetailPage() {
                     />
                   </label>
 
-                  <LoaderButton type="submit" loading={working}>
+                  <LoaderButton type="submit" loading={working} disabled={isArchived}>
                     Enregistrer les infos
                   </LoaderButton>
                 </form>
@@ -1752,7 +1835,7 @@ export default function EventDetailPage() {
                     />
                   </label>
 
-                  <LoaderButton type="submit" loading={working}>
+                  <LoaderButton type="submit" loading={working} disabled={isArchived}>
                     Preparer l invitation
                   </LoaderButton>
                 </form>
@@ -1784,7 +1867,7 @@ export default function EventDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-ghost"
-                                disabled={working}
+                                disabled={working || isArchived}
                                 onClick={() => void handleRevokeInvitation(invitation.id)}
                               >
                                 Revoquer
@@ -1836,7 +1919,12 @@ export default function EventDetailPage() {
                       </select>
                     </label>
 
-                    <LoaderButton type="button" loading={working} onClick={() => void handleTransferHost()}>
+                    <LoaderButton
+                      type="button"
+                      loading={working}
+                      disabled={isArchived}
+                      onClick={() => void handleTransferHost()}
+                    >
                       Transferer le role d hote
                     </LoaderButton>
                   </div>

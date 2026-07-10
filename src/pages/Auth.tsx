@@ -6,7 +6,7 @@ import { useSession } from "../lib/useSession";
 import { supabase } from "../lib/supabase";
 import { normalizeInviteCode } from "../lib/utils";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "forgot";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -44,6 +44,22 @@ export default function Auth() {
     event.preventDefault();
     setFeedback(null);
     setBusy(true);
+
+    if (mode === "forgot") {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      setBusy(false);
+
+      if (error) {
+        setFeedback("Si cette adresse existe, un lien de reinitialisation sera envoye.");
+        return;
+      }
+
+      setFeedback("Si cette adresse existe, un lien de reinitialisation sera envoye.");
+      return;
+    }
 
     if (mode === "signup") {
       const { data, error } = await supabase.auth.signUp({
@@ -145,25 +161,43 @@ export default function Auth() {
               />
             </label>
 
-            <label className="field-block">
-              <span>Mot de passe</span>
-              <input
-                className="field-input"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Au moins 6 caracteres"
-                minLength={6}
-                required
-              />
-            </label>
+            {mode !== "forgot" ? (
+              <label className="field-block">
+                <span>Mot de passe</span>
+                <input
+                  className="field-input"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Au moins 6 caracteres"
+                  minLength={6}
+                  required
+                />
+              </label>
+            ) : null}
 
             {feedback ? <p className="callout">{feedback}</p> : null}
 
             <LoaderButton type="submit" loading={busy} fullWidth>
-              {mode === "signup" ? "Creer mon compte" : "Entrer dans Cheepo"}
+              {mode === "signup"
+                ? "Creer mon compte"
+                : mode === "forgot"
+                  ? "Envoyer le lien"
+                  : "Entrer dans Cheepo"}
             </LoaderButton>
           </form>
+
+          {mode === "login" ? (
+            <button type="button" className="btn btn-ghost" onClick={() => setMode("forgot")}>
+              Mot de passe oublie
+            </button>
+          ) : null}
+
+          {mode === "forgot" ? (
+            <button type="button" className="btn btn-ghost" onClick={() => setMode("login")}>
+              Retour a la connexion
+            </button>
+          ) : null}
 
           <p className="meta-copy">
             Retour a <Link to="/">l accueil</Link>.

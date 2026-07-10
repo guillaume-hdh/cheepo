@@ -264,6 +264,82 @@ h3 {
   color: #1b2733;
 }
 
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 2px solid rgb(255 255 255 / 0.86);
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgb(27 39 51 / 0.14);
+}
+
+.avatar-sm {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.72rem;
+}
+
+.avatar-md {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 0.86rem;
+}
+
+.avatar-lg {
+  width: 5.25rem;
+  height: 5.25rem;
+  font-size: 1.45rem;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-initials {
+  transform: translateY(0.03em);
+}
+
+.user-chip-profile,
+.member-card-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.profile-avatar-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.preference-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(90px, auto));
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid rgb(230 214 200 / 0.72);
+}
+
+.preference-row:last-child {
+  border-bottom: 0;
+}
+
+.preference-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  color: #637185;
+}
+
 .pill-soft {
   background: rgb(255 107 74 / 0.08);
   border-color: rgb(255 107 74 / 0.18);
@@ -604,5 +680,10 @@ code {
   .landing-grid,
   .auth-grid {
     width: min(100% - 1rem, 100%);
+  }
+
+  .preference-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 }

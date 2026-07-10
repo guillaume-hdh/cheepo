@@ -3,6 +3,17 @@ export type EventStatus = "active" | "archived";
 export type InvitationStatus = "pending" | "accepted" | "revoked";
 export type EventTab = "eat" | "bring" | "shop" | "activity" | "manage";
 
+export type UserProfile = {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  avatar_path: string | null;
+  avatar_mime_type: string | null;
+  avatar_updated_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type EventSummary = {
   id: string;
   title: string;
@@ -29,6 +40,7 @@ export type MemberDirectoryItem = {
   role: EventRole;
   display_name: string;
   email: string | null;
+  avatar_path: string | null;
   joined_at: string;
 };
 
@@ -139,4 +151,23 @@ export type EventInvitation = {
   revoked_at: string | null;
   accepted_by: string | null;
   accepted_user_name: string | null;
+};
+
+export type NotificationCategory = {
+  key: string;
+  label: string;
+  sort_order: number;
+  default_in_app: boolean;
+  default_email: boolean;
+  default_push: boolean;
+};
+
+export type UserNotificationPreference = {
+  user_id: string;
+  category: string;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
+  push_enabled: boolean;
+  created_at: string;
+  updated_at: string;
 };

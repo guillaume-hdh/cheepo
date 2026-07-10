@@ -12,17 +12,28 @@ import EventsPage from "./pages/EventsPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import JoinByCodePage from "./pages/JoinByCodePage";
+import ProfilePage from "./pages/ProfilePage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import { SessionProvider } from "./lib/session";
 
 const router = createBrowserRouter([
   { path: "/", element: <Home /> },
   { path: "/auth", element: <Auth /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
   {
     path: "/events",
     element: (
       <ProtectedRoute>
         <EventsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/profile",
+    element: (
+      <ProtectedRoute>
+        <ProfilePage />
       </ProtectedRoute>
     ),
   },

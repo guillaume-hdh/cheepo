@@ -154,4 +154,19 @@ Le repo prepare encore les invitations via `mailto:`. Pour brancher un vrai envo
 - port
 - identifiant
 - mot de passe
-- adresse d envoi souhaitée
+- adresse d envoi souhaitee
+
+### Profil et mot de passe oublie
+
+La reinitialisation du mot de passe utilise Supabase Auth via
+`supabase.auth.resetPasswordForEmail`, avec redirection vers `/reset-password`.
+Aucune cle SMTP ne doit etre exposee dans le front. Configure l envoi email dans
+le dashboard Supabase `Authentication > Emails / SMTP`, par exemple avec le SMTP
+Hostinger ou un service transactionnel dedie.
+
+La migration `supabase/migrations/0007_profile_avatar_notifications.sql` ajoute:
+
+- les champs avatar sur `public.profiles`
+- le bucket prive Supabase Storage `avatars`
+- les preferences de notifications utilisateur
+- le retour `avatar_path` dans `get_event_members`
